@@ -1712,7 +1712,6 @@ dependencies = [
  "image",
  "kira",
  "log",
- "microwakeword",
  "once_cell",
  "parking_lot 0.12.1",
  "platform-dirs",
@@ -2039,17 +2038,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a634b1c61a95585bd15607c6ab0c4e5b226e695ff2800ba0cdccddf208c406c"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "microwakeword"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "log",
- "serde",
- "serde_json",
- "vosk",
 ]
 
 [[package]]

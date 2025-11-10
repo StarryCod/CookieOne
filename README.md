@@ -1,116 +1,111 @@
 # 🍪 Cookie Voice Assistant
 
-A modern, offline-first voice assistant built with Rust, featuring wake word detection, speech-to-text, and JARVIS-style persona.
+Современный голосовой ассистент на Rust с wake word detection, речевым распознаванием и JARVIS-стилем общения.
 
-## ✨ Features
+## ✨ Основные возможности
 
-- **✅ Zero C++ Build Dependencies** - Pure Rust implementation using modern libraries
-- **🎤 Wake Word Detection** - Custom MicroWakeWord implementation using Vosk
-- **🗣️ Speech Recognition** - Dual STT backends:
-  - **Vosk** (Default) - Offline, privacy-focused
-  - **Gemini Audio** (Optional) - Cloud-based, highly accurate
-- **🎭 JARVIS Persona** - Professional, concise responses with randomized phrases
-- **🔊 CPAL Audio** - Cross-platform audio input with sample format conversion
-- **⚡ Fast & Reliable** - Async/await architecture with Tokio runtime
+- **✅ Без C++ зависимостей** - Чистая Rust реализация с современными библиотеками
+- **🎤 Wake Word Detection** - Используется Vosk с grammar-based recognition
+- **🗣️ Речевое Распознавание** - Два STT backend'а:
+  - **Vosk** (по умолчанию) - Оффлайн, приватность
+  - **Gemini Audio** (опционально) - Облачный, высокая точность
+- **🎭 JARVIS Persona** - Профессиональные, краткие ответы с рандомизацией
+- **🔊 CPAL Audio** - Кросс-платформенный аудио input с конвертацией форматов
+- **⚡ Быстро & Надёжно** - Async/await архитектура с Tokio runtime
 
-## 📦 Dependencies
+## 📦 Зависимости
 
-All dependencies are pure Rust with verified versions from crates.io:
+Все зависимости - чистый Rust с проверенными версиями из crates.io:
 
-### Core Audio & Speech
-- `cpal = "0.16"` - Cross-platform audio I/O
-- `vosk = "0.3.1"` - Offline speech recognition
-- `microwakeword = { path = "../microwakeword" }` - Custom wake word detector
+### Ядро Audio & Speech
+- `cpal = "0.16"` - Кросс-платформенный audio I/O
+- `vosk = "0.3.1"` - Оффлайн речевое распознавание
+- `hound = "3.5"` - WAV файлы
 
-### Networking
-- `reqwest = "0.12"` - HTTP client for Gemini API
-- `base64 = "0.22"` - Audio encoding for API requests
+### Сеть
+- `reqwest = "0.12"` - HTTP клиент для Gemini API
+- `base64 = "0.22"` - Кодирование аудио для API
 
 ### Async Runtime
-- `tokio = "1.0"` - Async runtime with full features
-- `async-trait = "0.1"` - Trait support for async methods
+- `tokio = "1.0"` - Async runtime
+- `async-trait = "0.1"` - Trait поддержка для async
 
-### Utilities
-- `serde = "1.0"` - Serialization framework
-- `serde_json = "1.0"` - JSON support
-- `serde_yaml = "0.9"` - YAML support
-- `anyhow = "1.0"` - Error handling
-- `fastrand = "2.0"` - Fast random number generation
-- `parking_lot = "0.12"` - Faster mutex implementation
-- `crossbeam = "0.8"` - Lock-free data structures
+### Утилиты
+- `serde = "1.0"` - Сериализация
+- `serde_json = "1.0"` - JSON поддержка
+- `serde_yaml = "0.9"` - YAML поддержка
+- `anyhow = "1.0"` - Обработка ошибок
+- `fastrand = "2.0"` - Быстрый RNG
+- `parking_lot = "0.12"` - Быстрые мьютексы
+- `crossbeam = "0.8"` - Lock-free структуры данных
 
-## 🚀 Quick Start
+## 🚀 Быстрый старт
 
-### 1. Prerequisites
+### 1. Предварительные требования
 
-- **Rust 1.70+** - Install from [rustup.rs](https://rustup.rs/)
-- **Vosk Model** - Download a model:
-  - English (small): [vosk-model-small-en-us-0.15](https://alphacephei.com/vosk/models)
-  - Russian (small): [vosk-model-small-ru-0.22](https://alphacephei.com/vosk/models)
-  - Other languages: [Vosk Models](https://alphacephei.com/vosk/models)
+- **Rust 1.70+** ([Установить](https://rustup.rs/))
+- **ОС:** Windows, macOS, или Linux
+- **Микрофон:** Любой USB или встроенный
 
-### 2. Installation
+### 2. Скачать Vosk модель (2 минуты)
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/cookie-voice-assistant
-cd cookie-voice-assistant/app
+cd app/assets/stt/
 
-# Download and extract Vosk model
+# Английский (малая модель - рекомендуется для тестов)
 wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
-unzip vosk-model-small-en-us-0.15.zip -d assets/stt/
+unzip vosk-model-small-en-us-0.15.zip
+rm vosk-model-small-en-us-0.15.zip
 
-# Build the project
+# ИЛИ Русский (если предпочитаете)
+# wget https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip
+# unzip vosk-model-small-ru-0.22.zip
+# rm vosk-model-small-ru-0.22.zip
+```
+
+**Результат:** Должна быть директория `app/assets/stt/vosk-model-small-en-us-0.15/`
+
+### 3. Сборка (2 минуты)
+
+```bash
+cd app
 cargo build --release
 ```
 
-### 3. Configuration
+**Примечание:** Первая сборка скачивает зависимости (~200MB), занимает 2-3 минуты
 
-Edit `config.json`:
-
-```json
-{
-  "wake_word_threshold": 0.45,
-  "wake_word_path": "assets/wakeword/cookie.mww",
-  "stt_backend": {
-    "type": "Vosk",
-    "model_path": "assets/stt/vosk-model-small-en-us-0.15"
-  },
-  "gemini_api_key": null,
-  "jarvis_phrases": "assets/phrases/jarvis_style.json",
-  "commands_path": "commands/commands.json",
-  "listening_device": 0
-}
-```
-
-### 4. Wake Word Configuration
-
-Edit `assets/wakeword/cookie.mww`:
-
-```json
-{
-  "model_path": "assets/stt/vosk-model-small-en-us-0.15",
-  "keyphrase": "cookie",
-  "threshold": 0.45
-}
-```
-
-**Note:** The wake word model uses the same Vosk model as STT for keyword spotting.
-
-### 5. Run
+### 4. Запуск (1 минута)
 
 ```bash
 cargo run --release
 ```
 
-Say **"cookie"** to activate, then speak your command!
+**Ожидаемый вывод:**
+```
+INFO - Starting Cookie Voice Assistant v0.0.3
+INFO - Initializing CPAL audio recorder...
+INFO - Using audio device: Default Input Device
+INFO - CPAL audio recorder initialized successfully
+INFO - Initializing wake word detector (Vosk-based)...
+INFO - Wake word detector initialized: phrase='cookie', threshold=0.45
+INFO - Vosk STT engine initialized
+INFO - Starting main loop...
+```
 
-## 🔧 Advanced Configuration
+### 5. Тестирование Wake Word
 
-### Using Gemini Audio STT
+1. **Дождитесь** завершения инициализации
+2. **Скажите чётко:** "cookie"
+3. **Ожидается:** В консоли появится "Wake word detected!"
+4. **Затем скажите:** "hello" или "hi"
+5. **Ожидается:** Команда выполнится (выведет "Hello, Sir!")
 
-1. Get API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Update `config.json`:
+## 🔧 Расширенная настройка
+
+### Использование Gemini Audio STT
+
+1. Получите API ключ из [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Обновите `config.json`:
 
 ```json
 {
@@ -121,43 +116,38 @@ Say **"cookie"** to activate, then speak your command!
 }
 ```
 
-### Custom Commands
+### Пользовательские команды
 
-Edit `commands/commands.json`:
+Редактируйте `commands/commands.json`:
 
 ```json
 [
   {
-    "phrases": ["hello", "hi", "greetings"],
+    "phrases": ["open browser", "browser"],
     "action": {
       "type": "shell",
-      "command": "echo 'Hello, Sir!'"
+      "command": "firefox"
     }
   },
   {
-    "phrases": ["play music", "music"],
+    "phrases": ["what time", "time"],
     "action": {
       "type": "shell",
-      "command": "vlc ~/Music/playlist.m3u"
-    }
-  },
-  {
-    "phrases": ["what time is it", "time"],
-    "action": {
-      "type": "shell",
-      "command": "date '+%H:%M'"
+      "command": "date"
     }
   }
 ]
 ```
 
-### JARVIS Persona Customization
+**Перезапустите** после редактирования для загрузки новых команд.
 
-Edit `assets/phrases/jarvis_style.json`:
+### Настройка JARVIS Persona
+
+Редактируйте `assets/phrases/jarvis_style.json`:
 
 ```json
 {
-  "ack": ["Yes, sir.", "Certainly, sir.", "At your service, sir."],
+  "ack": ["Yes, sir.", "Certainly, sir.", "Of course, sir."],
   "processing": ["Working on it, sir.", "On it, sir."],
   "done": ["Completed, sir.", "All done, sir."],
   "error": ["Sir, an error has occurred.", "I require clarification, sir."],
@@ -165,32 +155,34 @@ Edit `assets/phrases/jarvis_style.json`:
 }
 ```
 
-## 📊 Architecture
+**Перезапуск не требуется** - фразы перезагружаются при каждом использовании.
 
-### Module Structure
+## 📊 Архитектура
+
+### Структура модулей
 
 ```
 app/src/
-├── main.rs          # Entry point & main loop
-├── config.rs        # Configuration management
+├── main.rs          # Точка входа и main loop
+├── config.rs        # Управление конфигурацией
 ├── recorder.rs      # CPAL audio input
-├── wakeword.rs      # Wake word detection
-├── stt/             # Speech-to-text engines
-│   ├── mod.rs       # STT trait & initialization
+├── wakeword.rs      # Wake word detection через Vosk
+├── stt/             # Speech-to-text движки
+│   ├── mod.rs       # STT trait & инициализация
 │   ├── vosk_engine.rs    # Vosk backend
 │   └── gemini_audio.rs   # Gemini backend
-├── persona.rs       # JARVIS-style phrases
-├── audio.rs         # Audio playback
-└── commands.rs      # Command matching & execution
+├── persona.rs       # JARVIS-style фразы
+├── audio.rs         # Audio playback (placeholder)
+└── commands.rs      # Сопоставление команд и выполнение
 ```
 
 ### Audio Pipeline
 
 ```
-Microphone → CPAL → Format Conversion → i16 PCM Buffer
+Микрофон → CPAL → Конвертация формата → i16 PCM Buffer
                                             ↓
-                                    Wake Word Detector
-                                            ↓ (activated)
+                                    Wake Word Detector (Vosk + grammar)
+                                            ↓ (активирован)
                                     STT Engine (Vosk/Gemini)
                                             ↓
                                     Command Matcher
@@ -198,124 +190,157 @@ Microphone → CPAL → Format Conversion → i16 PCM Buffer
                                     Command Executor
 ```
 
-## 🎯 Key Design Decisions
+## 🎯 Ключевые технические решения
 
-### 1. **MicroWakeWord Implementation**
+### 1. **Wake Word Detection через Vosk**
 
-Since the `microwakeword` crate doesn't exist on crates.io, we implemented a custom solution using Vosk's grammar-based recognition:
+Vosk не имеет отдельной wake word модели, но предоставляет `new_with_grammar()`:
 
-- Uses the same model as STT (no separate wake word model needed)
-- Grammar restricts recognition to the wake word only
-- Efficient and accurate for keyword spotting
-- Simple JSON configuration
+```rust
+// Создаём recognizer только для слова "cookie"
+let grammar = ["cookie"];
+let recognizer = Recognizer::new_with_grammar(&model, 16000.0, &grammar)?;
 
-### 2. **CPAL for Audio Input**
+// Теперь распознаёт ТОЛЬКО это слово
+// Всё остальное игнорируется = быстро!
+```
 
-Replaced PvRecorder with CPAL:
-- Pure Rust implementation
-- Cross-platform (Windows, macOS, Linux)
-- Automatic sample format conversion
-- Thread-safe channel-based architecture
+**Преимущества:**
+- ✅ Одна модель для wake word и STT
+- ✅ Grammar ограничивает словарь = быстро
+- ✅ Любое слово можно использовать
+- ✅ Простая JSON конфигурация
+
+### 2. **CPAL для Audio Input**
+
+Заменили PvRecorder на CPAL:
+- Чистая Rust реализация
+- Кросс-платформенность (Windows, macOS, Linux)
+- Автоматическая конвертация форматов сэмплов
+- Thread-safe channel-based архитектура
 
 ### 3. **Vosk 0.3.1 API**
 
-Updated to latest Vosk API:
-- `Model::new()` returns `Option<Model>`
-- `Recognizer::new_with_grammar()` for wake word
-- `CompleteResult` enum with `Single`/`Multiple` variants
-- `DecodingState` for waveform acceptance
+Обновлено до последнего Vosk API:
+- `Model::new()` возвращает `Option<Model>`
+- `Recognizer::new_with_grammar()` для wake word
+- `CompleteResult` enum с вариантами `Single`/`Multiple`
+- `DecodingState` для acceptance waveform
 
-### 4. **Fastrand for RNG**
+### 4. **Fastrand для RNG**
 
-Replaced `rand_distr` with `fastrand`:
-- Zero dependencies
-- Fast non-cryptographic RNG
-- Simple API: `fastrand::usize(..phrases.len())`
+Заменили `rand_distr` на `fastrand`:
+- Нулевые зависимости
+- Быстрый некриптографический RNG
+- Простое API: `fastrand::usize(..phrases.len())`
 
 ## 🔍 Troubleshooting
 
-### No Audio Input Detected
+### Аудио вход не обнаружен
 
+**Решение:** Проверьте разрешения микрофона
 ```bash
-# List audio devices
-cargo run --release -- --list-devices
+# Windows: Settings → Privacy → Microphone
+# macOS: System Preferences → Security & Privacy → Microphone
+# Linux: Проверьте настройки alsa/pulseaudio
 ```
 
-Update `listening_device` in `config.json` to the correct device index.
+### Wake word не обнаруживается
 
-### Wake Word Not Detected
+**Попробуйте понизить threshold:**
 
-1. **Check microphone** - Ensure it's working and set as default
-2. **Lower threshold** - Try `0.3` in `cookie.mww`
-3. **Speak clearly** - Say "cookie" clearly and wait ~500ms
-4. **Check model** - Ensure Vosk model supports English/your language
+Редактируйте `assets/wakeword/cookie.mww`:
+```json
+{
+  "model_path": "assets/stt/vosk-model-small-en-us-0.15",
+  "keyphrase": "cookie",
+  "threshold": 0.3  // Ниже = более чувствительно
+}
+```
 
-### Build Errors
+**Советы:**
+- Говорите чётко и нормальной громкостью
+- Произносите "cookie" как одно слово
+- Подождите ~500ms после произнесения
+- Попробуйте в тихой обстановке
 
+### Ошибки сборки
+
+**Проверьте версию Rust:**
 ```bash
-# Clean build
+rustc --version  # Должно быть 1.70+
+rustup update
+```
+
+**Очистите и пересоберите:**
+```bash
+cd app
 cargo clean
 cargo build --release
-
-# Update dependencies
-cargo update
 ```
 
-### Vosk Model Issues
+### Модель не найдена
 
-- Download the correct model for your language
-- Extract to `assets/stt/` directory
-- Update paths in `config.json` and `cookie.mww`
-- Ensure paths are relative to the app directory
+**Проверьте структуру директорий:**
+```bash
+cd app
+ls -la assets/stt/vosk-model-small-en-us-0.15/
+```
 
-## 📝 Version Compatibility
+**Должна содержать:**
+- `am/` директория
+- `conf/` директория
+- `graph/` директория
+- `README`
 
-All dependencies have been tested and verified:
+## 📝 Совместимость версий
 
-| Dependency | Version | Status |
+Все зависимости протестированы и верифицированы:
+
+| Зависимость | Версия | Статус |
 |------------|---------|--------|
-| cpal | 0.16 | ✅ Latest stable |
-| vosk | 0.3.1 | ✅ Latest on crates.io |
-| reqwest | 0.12 | ✅ Latest stable |
-| tokio | 1.0 | ✅ LTS release |
-| serde | 1.0 | ✅ Stable |
-| parking_lot | 0.12 | ✅ Stable |
-| crossbeam | 0.8 | ✅ Stable |
+| cpal | 0.16 | ✅ Последняя стабильная |
+| vosk | 0.3.1 | ✅ Последняя на crates.io |
+| reqwest | 0.12 | ✅ Последняя стабильная |
+| tokio | 1.0 | ✅ LTS релиз |
+| serde | 1.0 | ✅ Стабильная |
+| parking_lot | 0.12 | ✅ Стабильная |
+| crossbeam | 0.8 | ✅ Стабильная |
 
-## 🚧 Known Limitations
+## 🚧 Известные ограничения
 
-1. **Audio Playback** - Currently placeholder (logs only)
-   - Plan to integrate `rodio` or `kira` for TTS
-2. **macOS Tray** - Tray icon support limited on macOS
-3. **Windows Only Shell Commands** - Uses `sh -c`, adapt for Windows PowerShell if needed
+1. **Audio Playback** - Пока placeholder (только логи)
+   - Планируется интеграция `rodio` или `kira` для TTS
+2. **macOS Tray** - Поддержка tray icon ограничена на macOS
+3. **Windows Shell Commands** - Использует `sh -c`, адаптируйте для Windows PowerShell при необходимости
 
 ## 🗺️ Roadmap
 
-- [ ] Implement audio playback with Rodio
-- [ ] Add TTS support (Silero-rs)
-- [ ] GUI application with Tauri
-- [ ] Settings UI for device selection
-- [ ] Multiple wake word support
-- [ ] Command history & analytics
-- [ ] Plugin system for custom actions
+- [ ] Реализовать audio playback с Rodio
+- [ ] Добавить TTS поддержку (Silero-rs)
+- [ ] GUI приложение с Tauri
+- [ ] Settings UI для выбора устройств
+- [ ] Поддержка нескольких wake words
+- [ ] История команд и аналитика
+- [ ] Система плагинов для пользовательских действий
 
-## 📄 License
+## 📄 Лицензия
 
-GPL-3.0-only - See LICENSE.txt
+GPL-3.0-only - См. LICENSE.txt
 
-## 🙏 Acknowledgments
+## 🙏 Благодарности
 
-- **Vosk** - Offline speech recognition by Alpha Cephei
-- **CPAL** - Cross-platform audio library
-- **Google Gemini** - Cloud-based speech recognition API
-- **Jarvis (MCU)** - Inspiration for the persona style
+- **Vosk** - Оффлайн распознавание речи от Alpha Cephei
+- **CPAL** - Кросс-платформенная аудио библиотека
+- **Google Gemini** - Облачное распознавание речи API
+- **Jarvis (MCU)** - Вдохновение для стиля персоны
 
-## 📞 Support
+## 📞 Поддержка
 
-- Report issues on GitHub
-- For questions, open a discussion
-- Contributions welcome via pull requests
+- Сообщайте об ошибках на GitHub
+- Для вопросов открывайте discussion
+- Приветствуются pull requests
 
 ---
 
-**Built with ❤️ in Rust** | No C++ Required | Privacy-First | Offline-Capable
+**Построено с ❤️ на Rust** | Без C++ | Privacy-First | Offline-Capable
