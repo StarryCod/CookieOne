@@ -1,144 +1,97 @@
-pub mod structs;
-use structs::WakeWordEngine;
-use structs::SpeechToTextEngine;
-use structs::RecorderType;
-use structs::AudioType;
-
-use std::fs;
-use std::env;
-use std::path::PathBuf;
+use crate::{APP_CONFIG_DIR, APP_DIR, APP_DIRS};
 use once_cell::sync::Lazy;
+use platform_dirs::AppDirs;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
 
-use platform_dirs::{AppDirs};
-use rustpotter::{RustpotterConfig, WavFmt, DetectorConfig, FiltersConfig, ScoreMode, GainNormalizationConfig, BandPassConfig};
+pub const DEFAULT_CONFIG_FILE: &str = "config.json";
+pub const GEMINI_ENDPOINT: &str =
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-pro-audio:generateContent";
 
-use crate::{config, APP_DIRS, APP_CONFIG_DIR, APP_LOG_DIR};
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum SttBackendConfig {
+    Vosk { model_path: String },
+    GeminiAudio,
+}
 
-#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppConfig {
+    pub wake_word_threshold: f32,
+    pub wake_word_path: String,
+    pub stt_backend: SttBackendConfig,
+    pub gemini_api_key: Option<String>,
+    pub jarvis_phrases: String,
+    pub commands_path: String,
+    pub listening_device: usize,
+}
 
-pub fn init_dirs() -> Result<(), String> {
-    // infer app dirs
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            wake_word_threshold: 0.45,
+            wake_word_path: "assets/wakeword/cookie.mww".into(),
+            stt_backend: SttBackendConfig::Vosk {
+                model_path: "assets/stt/vosk-model-small-ru-0.22".into(),
+            },
+            gemini_api_key: None,
+            jarvis_phrases: "assets/phrases/jarvis_style.json".into(),
+            commands_path: "commands/commands.json".into(),
+            listening_device: 0,
+        }
+    }
+}
+
+static CONFIG: Lazy<AppConfig> = Lazy::new(|| load_config().unwrap_or_default());
+
+pub fn init_dirs() -> anyhow::Result<()> {
     if APP_DIRS.get().is_some() {
         return Ok(());
     }
 
-    // cache_dir, config_dir, data_dir, state_dir
-    APP_DIRS.set(AppDirs::new(Some(config::BUNDLE_IDENTIFIER), false).unwrap()).unwrap();
+    let dirs = AppDirs::new(Some("cookie"), false).unwrap();
+    let config_dir = dirs.config_dir.clone();
 
-    // setup directories
-    let mut config_dir = PathBuf::from(&APP_DIRS.get().unwrap().config_dir);
-    let mut log_dir = PathBuf::from(&APP_DIRS.get().unwrap().config_dir);
-
-    // create dirs, if required
     if !config_dir.exists() {
-        if fs::create_dir_all(&config_dir).is_err() {
-            config_dir = env::current_dir().expect("Cannot infer the config directory");
-            fs::create_dir_all(&config_dir).expect("Cannot create config directory, access denied?");
-        }
+        fs::create_dir_all(&config_dir)?;
     }
 
-    if !log_dir.exists() {
-        if fs::create_dir_all(&log_dir).is_err() {
-            log_dir = env::current_dir().expect("Cannot infer the log directory");
-            fs::create_dir_all(&log_dir).expect("Cannot create log directory, access denied?");
-        }
-    }
-
-    // store inferred paths
-    APP_CONFIG_DIR.set(config_dir).unwrap();
-    APP_LOG_DIR.set(log_dir).unwrap();
+    APP_DIRS.set(dirs).ok();
+    APP_CONFIG_DIR.set(config_dir).ok();
 
     Ok(())
 }
 
+pub fn config() -> &'static AppConfig {
+    &CONFIG
+}
 
-/*
-    Defaults.
- */
-pub const DEFAULT_AUDIO_TYPE: AudioType = AudioType::Kira;
-pub const DEFAULT_RECORDER_TYPE: RecorderType = RecorderType::PvRecorder;
-pub const DEFAULT_WAKE_WORD_ENGINE: WakeWordEngine = WakeWordEngine::Rustpotter;
-pub const DEFAULT_SPEECH_TO_TEXT_ENGINE: SpeechToTextEngine = SpeechToTextEngine::Vosk;
+pub fn update_gemini_key(key: String) -> anyhow::Result<()> {
+    let mut cfg = CONFIG.clone();
+    cfg.gemini_api_key = Some(key);
+    save_config(&cfg)
+}
 
-pub const DEFAULT_VOICE: &str = "jarvis-og";
+fn config_path() -> PathBuf {
+    APP_DIR.join(DEFAULT_CONFIG_FILE)
+}
 
-pub const BUNDLE_IDENTIFIER: &str = "com.priler.jarvis";
-pub const DB_FILE_NAME: &str = "app.db";
-pub const LOG_FILE_NAME: &str = "log.txt";
-pub const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
-pub const AUTHOR_NAME: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
-pub const REPOSITORY_LINK: Option<&str> = option_env!("CARGO_PKG_REPOSITORY");
-pub const TG_OFFICIAL_LINK: Option<&str> = Some("https://t.me/howdyho_official");
-pub const FEEDBACK_LINK: Option<&str> = Some("https://t.me/jarvis_feedback_bot");
-
-/*
-    Tray.
- */
-pub const TRAY_ICON: &str = "32x32.png";
-pub const TRAY_TOOLTIP: &str = "Jarvis Voice Assistant";
-
-// RUSPOTTER
-pub const RUSPOTTER_MIN_SCORE: f32 = 0.62;
-pub const RUSTPOTTER_DEFAULT_CONFIG: Lazy<RustpotterConfig> = Lazy::new(|| {
-    RustpotterConfig {
-        fmt: WavFmt::default(),
-        detector: DetectorConfig {
-            avg_threshold: 0.,
-            threshold: 0.5,
-            min_scores: 15,
-            score_mode: ScoreMode::Average,
-            comparator_band_size: 5,
-            comparator_ref: 0.22
-        },
-        filters: FiltersConfig {
-            gain_normalizer: GainNormalizationConfig {
-                enabled: true,
-                gain_ref: None,
-                min_gain: 0.7,
-                max_gain: 1.0,
-            },
-            band_pass: BandPassConfig {
-                enabled: true,
-                low_cutoff: 80.,
-                high_cutoff: 400.,
-            }
-        }
+fn load_config() -> anyhow::Result<AppConfig> {
+    let path = config_path();
+    if !path.exists() {
+        let cfg = AppConfig::default();
+        save_config(&cfg)?;
+        return Ok(cfg);
     }
-});
 
-// PICOVOICE
-pub const COMMANDS_PATH: &str = "commands/";
-pub const KEYWORDS_PATH: &str = "picovoice/keywords/";
-pub const DEFAULT_KEYWORD: &str = "jarvis_windows.ppn";
-pub const DEFAULT_SENSITIVITY: f32 = 1.0;
+    let contents = fs::read_to_string(&path)?;
+    let cfg: AppConfig = serde_json::from_str(&contents)?;
+    Ok(cfg)
+}
 
-// VOSK
-// pub const VOSK_MODEL_PATH: &str = const_concat!(PUBLIC_PATH, "/vosk/model_small");
-pub const VOSK_FETCH_PHRASE: &str = "джарвис";
-pub const VOSK_MODEL_PATH: &str = "vosk/model_small";
-pub const VOSK_MIN_RATIO: f64 = 70.0;
-
-// ETC
-pub const CMD_RATIO_THRESHOLD: f64 = 65f64;
-pub const CMS_WAIT_DELAY: std::time::Duration = std::time::Duration::from_secs(15);
-
-pub const ASSISTANT_GREET_PHRASES: [&str; 3] = ["greet1", "greet2", "greet3"];
-pub const ASSISTANT_PHRASES_TBR: [&str; 17] = [
-    "джарвис",
-    "сэр",
-    "слушаю сэр",
-    "всегда к услугам",
-    "произнеси",
-    "ответь",
-    "покажи",
-    "скажи",
-    "давай",
-    "да сэр",
-    "к вашим услугам сэр",
-    "всегда к вашим услугам сэр",
-    "запрос выполнен сэр",
-    "выполнен сэр",
-    "есть",
-    "загружаю сэр",
-    "очень тонкое замечание сэр",
-];
+fn save_config(cfg: &AppConfig) -> anyhow::Result<()> {
+    let contents = serde_json::to_string_pretty(cfg)?;
+    fs::write(config_path(), contents)?;
+    Ok(())
+}

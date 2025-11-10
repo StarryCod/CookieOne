@@ -1,0 +1,9 @@
+[
+  {
+    "phrases": ["hello", "hi", "greetings"],
+    "action": {
+      "type": "shell",
+      "command": "echo 'Hello, Sir!'"
+    }
+  }
+]

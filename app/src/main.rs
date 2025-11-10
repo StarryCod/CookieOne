@@ -1,114 +1,108 @@
+use once_cell::sync::{Lazy, OnceCell};
+use platform_dirs::AppDirs;
 use std::env;
-use std::error::Error;
 use std::path::PathBuf;
 
-use once_cell::sync::{Lazy, OnceCell};
-use platform_dirs::{AppDirs};
-
-// expose the config
-mod config;
-
-// include log
 #[macro_use]
 extern crate simple_log;
-mod log;
 
-// include app
-mod app;
-
-// include db
-mod db;
-
-// include tray
-// @TODO. macOS currently not supported for tray functionality.
-#[cfg(not(target_os = "macos"))]
-mod tray;
-
-// include recorder
-mod recorder;
-
-// include speech-to-text
-mod stt;
-
-// include text-to-speech
-// empty
-
-// include commands
-mod commands;
-use commands::AssistantCommand;
-use crate::commands::list;
-
-// include audio
 mod audio;
+mod commands;
+mod config;
+mod persona;
+mod recorder;
+mod stt;
+mod wakeword;
 
-// include listener
-mod listener;
-
-// some global data
-static APP_DIR: Lazy<PathBuf> = Lazy::new(|| {env::current_dir().unwrap()});
-static SOUND_DIR: Lazy<PathBuf> = Lazy::new(|| {APP_DIR.clone().join("sound")});
+static APP_DIR: Lazy<PathBuf> = Lazy::new(|| env::current_dir().unwrap());
 static APP_DIRS: OnceCell<AppDirs> = OnceCell::new();
 static APP_CONFIG_DIR: OnceCell<PathBuf> = OnceCell::new();
-static APP_LOG_DIR: OnceCell<PathBuf> = OnceCell::new();
-static DB: OnceCell<db::structs::Settings> = OnceCell::new();
-static COMMANDS_LIST: OnceCell<Vec<AssistantCommand>> = OnceCell::new();
 
-fn main() -> Result<(), String> {
-    // initialize directories
+fn main() -> anyhow::Result<()> {
+    // Initialize directories
     config::init_dirs()?;
 
-    // initialize logging
-    log::init_logging()?;
+    // Initialize logging
+    simple_log::quick!("info");
+    info!(
+        "Starting Cookie Voice Assistant v{}",
+        env!("CARGO_PKG_VERSION")
+    );
 
-    // log some base info
-    info!("Starting Jarvis v{} ...", config::APP_VERSION.unwrap());
-    info!("Config directory is: {}", APP_CONFIG_DIR.get().unwrap().display());
-    info!("Log directory is: {}", APP_LOG_DIR.get().unwrap().display());
+    // Initialize persona
+    persona::init()?;
 
-    // initialize database (settings)
-    DB.set(db::init_settings());
+    // Initialize audio recorder
+    recorder::init()?;
 
-    // initialize tray
-    // @TODO. macOS currently not supported for tray functionality,
-    // due to the separate thread in which tray processing works,
-    // but macOS requires it to be processed in the main thread only
-    // The solution may be to include wake-word detection etc. in the winit event loop. (only for MacOS, though?)
-    #[cfg(not(target_os = "macos"))]
-    tray::init();
+    // Initialize wake word detector
+    wakeword::init()?;
 
-    // init recorder
-    if recorder::init().is_err() {
-        app::close(1); // cannot continue without recorder
-    }
+    // Initialize STT engine
+    stt::init()?;
 
-    // init stt engine
-    if stt::init().is_err() {
-        // @TODO. Allow continuing even without STT, if commands is using keywords or smthng?
-        app::close(1); // cannot continue without stt
-    }
+    // Initialize audio playback
+    audio::init()?;
 
-    // init tts engine
-    // none for now (Silero-rs coming)
+    // Load commands
+    commands::init()?;
 
-    // init commands
-    info!("Initializing commands.");
-    let commands = commands::parse_commands().unwrap();
-    info!("Commands initialized.\nOverall commands parsed: {}\nParsed commands: {:?}", commands.len(), commands::list(&commands));
-    COMMANDS_LIST.set(commands).unwrap();
-
-    // init audio
-    if audio::init().is_err() {
-        // @TODO. Allow continuing even without audio?
-        app::close(1); // cannot continue without audio
-    }
-
-    // init wake-word engine
-    if listener::init().is_err() {
-        app::close(1); // cannot continue without wake-word engine
-    }
-
-    // start the app
-    app::start();
+    // Start main loop
+    run_main_loop()?;
 
     Ok(())
+}
+
+fn run_main_loop() -> anyhow::Result<()> {
+    info!("Starting main loop...");
+
+    let mut audio_buffer = vec![0i16; 512];
+    recorder::start()?;
+
+    loop {
+        // Read audio from microphone
+        recorder::read(&mut audio_buffer)?;
+
+        // Check for wake word
+        if wakeword::detect(&audio_buffer) {
+            info!("Wake word detected!");
+            audio::play(persona::get_wake_phrase())?;
+            audio::play(persona::get_ack_phrase())?;
+
+            // Listen for command
+            let timeout = std::time::Duration::from_secs(5);
+            let start = std::time::Instant::now();
+
+            loop {
+                if start.elapsed() > timeout {
+                    info!("Listening timeout");
+                    break;
+                }
+
+                recorder::read(&mut audio_buffer)?;
+
+                if let Some(text) = stt::recognize(&audio_buffer, false) {
+                    info!("Recognized: {}", text);
+
+                    // Execute command
+                    if let Some(cmd) = commands::match_command(&text) {
+                        info!("Executing command: {:?}", cmd);
+                        audio::play(persona::get_processing_phrase())?;
+                        match commands::execute(&cmd) {
+                            Ok(_) => {
+                                audio::play(persona::get_done_phrase())?;
+                            }
+                            Err(err) => {
+                                error!("Command execution failed: {}", err);
+                                audio::play(persona::get_error_phrase())?;
+                            }
+                        }
+                    } else {
+                        audio::play(persona::get_error_phrase())?;
+                    }
+                    break;
+                }
+            }
+        }
+    }
 }

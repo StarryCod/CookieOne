@@ -1,0 +1,12 @@
+{
+  "wake_word_threshold": 0.45,
+  "wake_word_path": "assets/wakeword/cookie.mww",
+  "stt_backend": {
+    "type": "Vosk",
+    "model_path": "assets/stt/vosk-model-small-en-us-0.15"
+  },
+  "gemini_api_key": null,
+  "jarvis_phrases": "assets/phrases/jarvis_style.json",
+  "commands_path": "commands/commands.json",
+  "listening_device": 0
+}

@@ -1,0 +1,7 @@
+{
+  "ack": ["Yes, sir.", "Certainly, sir.", "At your service, sir.", "Listening, sir."],
+  "processing": ["Working on it, sir.", "On it, sir.", "Processing your request, sir."],
+  "done": ["Completed, sir.", "All done, sir.", "Task finished, sir."],
+  "error": ["Sir, an error has occurred.", "I require clarification, sir.", "This action is unavailable, sir."],
+  "wake": ["I am listening, sir.", "Yes, sir?", "I am here, sir."]
+}
