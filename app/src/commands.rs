@@ -1,225 +1,144 @@
-use rand::seq::SliceRandom;
-use seqdiff::ratio;
-use serde_yaml;
+use std::fs;
 use std::path::Path;
-use std::{fs, fs::File};
+use serde::{Deserialize, Serialize};
+use anyhow::{Context, Result};
 
-use core::time::Duration;
-use std::path::PathBuf;
-use std::process::{Command, Child};
-// use tauri::Manager;
+/// Описание действия команды
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum CommandAction {
+    /// Запуск внешнего процесса (CLI, скрипт и т.п.)
+    RunProcess {
+        command: String,
+        #[serde(default)]
+        args: Vec<String>,
+        #[serde(default)]
+        working_dir: Option<String>,
+    },
+    /// Проигрывание заранее записанного аудио-файла
+    PlayAudio {
+        file: String,
+    },
+    /// Возврат текстового ответа (для TTS)
+    RespondText {
+        text: String,
+    },
+}
 
-mod structs;
-pub use structs::*;
+/// Команда ассистента
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandDefinition {
+    /// Уникальный идентификатор команды
+    pub id: String,
+    /// Короткое название
+    pub name: String,
+    /// Краткое описание
+    pub description: Option<String>,
+    /// Путь к иконке (для UI)
+    pub icon: Option<String>,
+    /// Список ключевых фраз, которые активируют команду
+    pub keywords: Vec<String>,
+    /// Действие команды
+    pub action: CommandAction,
+}
 
-use crate::{config, audio};
+/// Список команд
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CommandLibrary {
+    pub commands: Vec<CommandDefinition>,
+}
 
-// @TODO. Allow commands both in yaml and json format.
-pub fn parse_commands() -> Result<Vec<AssistantCommand>, String> {
-    // collect commands
-    let mut commands: Vec<AssistantCommand> = vec![];
-
-    // read commands directories first
-    if let Ok(cpaths) = fs::read_dir(config::COMMANDS_PATH) {
-        for cpath in cpaths {
-            // validate this command, check if required files exists
-            let _cpath = cpath.unwrap().path();
-            let cc_file = Path::new(&_cpath).join("command.yaml");
-
-            if cc_file.exists() {
-                // try parse config files
-                let cc_reader = std::fs::File::open(&cc_file).unwrap();
-                let cc_yaml: CommandsList;
-
-                // try parse command.yaml
-                match serde_yaml::from_reader::<File, CommandsList>(cc_reader) {
-                    Ok(parse_result) => {
-                        cc_yaml = parse_result;
-                    },
-                    Err(msg) => {
-                        warn!("Can't parse {}, skipping ...\nCommand parse error is: {:?}", &cc_file.display(), msg);
-                        continue;
-                    }
-                }
-                // everything seems to be Ok
-                commands.push(AssistantCommand {
-                    path: _cpath,
-                    commands: cc_yaml,
-                });
-            }
+impl CommandLibrary {
+    /// Загружает список команд из JSON файла
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let content = fs::read_to_string(path.as_ref())
+            .context("Не удалось прочитать файл команд")?;
+        
+        let library: CommandLibrary = serde_json::from_str(&content)
+            .context("Не удалось распарсить команды")?;
+        
+        Ok(library)
+    }
+    
+    /// Сохраняет команды в JSON файл
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let content = serde_json::to_string_pretty(self)
+            .context("Не удалось сериализовать команды")?;
+        
+        if let Some(parent) = path.as_ref().parent() {
+            fs::create_dir_all(parent)
+                .context("Не удалось создать директорию для команд")?;
         }
-
-        if commands.len() > 0 {
-            Ok(commands)
+        
+        fs::write(path.as_ref(), content)
+            .context("Не удалось записать файл команд")?;
+        
+        Ok(())
+    }
+    
+    /// Загружает команды или создает дефолтную библиотеку
+    pub fn load_or_default<P: AsRef<Path>>(path: P) -> Result<Self> {
+        if path.as_ref().exists() {
+            Self::load(path)
         } else {
-            error!("No commands were found");
-            Err("No commands were found".into())
-        }
-    } else {
-        error!("Error reading commands directory");
-        return Err("Error reading commands directory".into());
-    }
-}
-
-// @TODO. NLU or smthng else is required, in order to infer commands with highest accuracy possible.
-pub fn fetch_command<'a>(
-    phrase: &str,
-    commands: &'a Vec<AssistantCommand>,
-) -> Option<(&'a PathBuf, &'a Config)> {
-    // result scmd
-    let mut result_scmd: Option<(&PathBuf, &Config)> = None;
-    let mut current_max_ratio = config::CMD_RATIO_THRESHOLD;
-
-    // convert fetch phrase to sequence
-    let fetch_phrase_chars = phrase.chars().collect::<Vec<_>>();
-
-    // list all the commands
-    for cmd in commands {
-        // list all subcommands
-        for scmd in &cmd.commands.list {
-            // list all phrases in command
-            for cmd_phrase in &scmd.phrases {
-                // convert cmd phrase to sequence
-                let cmd_phrase_chars = cmd_phrase.chars().collect::<Vec<_>>();
-
-                // compare fetch phrase with cmd phrase
-                let ratio = ratio(&fetch_phrase_chars, &cmd_phrase_chars);
-
-                // return, if it fits the given threshold
-                if ratio >= current_max_ratio {
-                    result_scmd = Some((&cmd.path, &scmd));
-                    current_max_ratio = ratio;
-                    // println!("Ratio is: {}", ratio);
-                    // return Some((&cmd.path, &scmd))
-                }
-            }
+            let library = CommandLibrary::default_library();
+            library.save(&path)?;
+            Ok(library)
         }
     }
-
-    if let Some((cmd_path, scmd)) = result_scmd {
-        println!("Ratio is: {}", current_max_ratio);
-        info!("CMD is: {cmd_path:?}, SCMD is: {scmd:?}, Ratio is: {}", current_max_ratio);
-        Some((&cmd_path, &scmd))
-    } else {
-        None
+    
+    /// Находит команду по ключевому слову в распознанном тексте
+    pub fn find_by_text<'a>(&'a self, text: &str) -> Option<&'a CommandDefinition> {
+        let normalized = text.to_lowercase();
+        
+        self.commands.iter().find(|command| {
+            command.keywords.iter().any(|keyword| {
+                let keyword = keyword.to_lowercase();
+                normalized.contains(&keyword)
+            })
+        })
     }
-}
-
-// @TODO. Rewrite executors by executor type struct. (with match arms)
-pub fn execute_exe(exe: &str, args: &Vec<String>) -> std::io::Result<Child> {
-    Command::new(exe).args(args).spawn()
-}
-
-pub fn execute_cli(cmd: &str, args: &Vec<String>) -> std::io::Result<Child> {
-
-    println!("Spawning cmd as: cmd /C {} {:?}", cmd, args);
-
-    if cfg!(target_os = "windows") {
-        Command::new("cmd")
-                .arg("/C")
-                .arg(cmd)
-                .args(args)
-                .spawn()
-    } else {
-        Command::new("sh")
-                .arg("-c")
-                .arg(cmd)
-                .args(args)
-                .spawn()
-    }
-}
-
-pub fn execute_command(
-    cmd_path: &PathBuf,
-    cmd_config: &Config,
-    // app_handle: &tauri::AppHandle,
-) -> Result<bool, String> {
-    let sounds_directory = audio::get_sound_directory().unwrap();
-
-    match cmd_config.command.action.as_str() {
-        "voice" => {
-            // VOICE command type
-            let random_cmd_sound = format!("{}.wav", cmd_config.voice.sounds.choose(&mut rand::thread_rng()).unwrap());
-            // events::play(random_cmd_sound, app_handle);
-            audio::play_sound(&sounds_directory.join(random_cmd_sound));
-
-            Ok(true)
-        }
-        "ahk" => {
-            // AutoHotkey command type
-            let exe_path_absolute = Path::new(&cmd_config.command.exe_path);
-            let exe_path_local = Path::new(&cmd_path).join(&cmd_config.command.exe_path);
-
-            if let Ok(_) = execute_exe(
-                if exe_path_absolute.exists() {
-                    exe_path_absolute.to_str().unwrap()
-                } else {
-                    exe_path_local.to_str().unwrap()
+    
+    /// Дефолтная библиотека команд (можно расширить позже)
+    fn default_library() -> Self {
+        let commands = vec![
+            CommandDefinition {
+                id: "greeting".to_string(),
+                name: "Приветствие".to_string(),
+                description: Some("Отвечает на приветствие".to_string()),
+                icon: None,
+                keywords: vec!["привет".to_string(), "здравствуй".to_string()],
+                action: CommandAction::RespondText {
+                    text: "Здравствуйте, сэр. Чем могу помочь?".to_string(),
                 },
-                &cmd_config.command.exe_args,
-            ) {
-                let random_cmd_sound = format!("{}.wav", cmd_config.voice.sounds.choose(&mut rand::thread_rng()).unwrap());
-                // events::play(random_cmd_sound, app_handle);
-                audio::play_sound(&sounds_directory.join(random_cmd_sound));
-
-                Ok(true)
-            } else {
-                error!("AHK process spawn error (does exe path is valid?)");
-                Err("AHK process spawn error (does exe path is valid?)".into())
-            }
-        }
-        "cli" => {
-            // CLI command type
-            let cli_cmd = &cmd_config.command.cli_cmd;
-
-            match execute_cli(
-                cli_cmd,
-                &cmd_config.command.cli_args,
-            ) {
-                    Ok(_) => {
-                        let random_cmd_sound = format!("{}.wav", cmd_config.voice.sounds.choose(&mut rand::thread_rng()).unwrap());
-                    // events::play(random_cmd_sound, app_handle);
-                        audio::play_sound(&sounds_directory.join(random_cmd_sound));
-
-                    Ok(true)
+            },
+            CommandDefinition {
+                id: "time".to_string(),
+                name: "Текущее время".to_string(),
+                description: Some("Сообщает текущее время".to_string()),
+                icon: None,
+                keywords: vec!["который час".to_string(), "время".to_string()],
+                action: CommandAction::RunProcess {
+                    command: "cmd".to_string(),
+                    args: vec!["/C".to_string(), "time /T".to_string()],
+                    working_dir: None,
                 },
-                Err(msg) => {
-                    error!("CLI command error ({})", msg);
-                    Err(format!("Shell command error ({})", msg).into())
-                }
-            }
-        }
-        "terminate" => {
-            // TERMINATE command type
-            let random_cmd_sound = format!("{}.wav", cmd_config.voice.sounds.choose(&mut rand::thread_rng()).unwrap());
-            // events::play(random_cmd_sound, app_handle);
-            audio::play_sound(&sounds_directory.join(random_cmd_sound));
-
-            std::thread::sleep(Duration::from_secs(2));
-            std::process::exit(0);
-        }
-        "stop_chaining" => {
-            // STOP_CHAINING command type
-            let random_cmd_sound = format!("{}.wav", cmd_config.voice.sounds.choose(&mut rand::thread_rng()).unwrap());
-            // events::play(random_cmd_sound, app_handle);
-            audio::play_sound(&sounds_directory.join(random_cmd_sound));
-
-            Ok(false)
-        }
-        _ => {
-            error!("Command type unknown");
-            Err("Command type unknown".into())
-        },
+            },
+        ];
+        
+        CommandLibrary { commands }
     }
 }
 
-pub fn list(from: &[AssistantCommand]) -> Vec<String> {
-    let mut out: Vec<String> = vec![];
-
-    for x in from.iter() {
-        out.push(String::from(x.path.to_str().unwrap()));
-        // out.append()
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_find_by_text() {
+        let library = CommandLibrary::default_library();
+        let command = library.find_by_text("привет, ассистент");
+        assert!(command.is_some());
+        assert_eq!(command.unwrap().id, "greeting");
     }
-
-    out
 }

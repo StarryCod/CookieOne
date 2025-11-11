@@ -1,0 +1,70 @@
+{
+  "commands": [
+    {
+      "id": "greeting",
+      "name": "Приветствие",
+      "description": "Отвечает на приветствие пользователя",
+      "icon": null,
+      "keywords": [
+        "привет",
+        "здравствуй",
+        "добрый день",
+        "здорово"
+      ],
+      "action": {
+        "type": "respond_text",
+        "text": "Здравствуйте, сэр. Чем могу помочь?"
+      }
+    },
+    {
+      "id": "time",
+      "name": "Текущее время",
+      "description": "Сообщает текущее время",
+      "icon": null,
+      "keywords": [
+        "который час",
+        "время",
+        "сколько время"
+      ],
+      "action": {
+        "type": "run_process",
+        "command": "cmd",
+        "args": ["/C", "time /T"],
+        "working_dir": null
+      }
+    },
+    {
+      "id": "date",
+      "name": "Текущая дата",
+      "description": "Сообщает текущую дату",
+      "icon": null,
+      "keywords": [
+        "какое число",
+        "дата",
+        "какой сегодня день"
+      ],
+      "action": {
+        "type": "run_process",
+        "command": "cmd",
+        "args": ["/C", "date /T"],
+        "working_dir": null
+      }
+    },
+    {
+      "id": "goodbye",
+      "name": "Прощание",
+      "description": "Отвечает на прощание",
+      "icon": null,
+      "keywords": [
+        "пока",
+        "до свидания",
+        "спасибо",
+        "хватит"
+      ],
+      "action": {
+        "type": "respond_text",
+        "text": "До свидания, сэр. Всегда рад помочь."
+      }
+    }
+  ]
+}

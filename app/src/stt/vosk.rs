@@ -1,63 +1,75 @@
-use once_cell::sync::OnceCell;
-use vosk::{DecodingState, Model, Recognizer};
+use std::path::Path;
+use std::sync::Arc;
 
-use std::sync::Mutex;
+use anyhow::{Context, Result};
+use async_trait::async_trait;
+use vosk::{Model, Recognizer};
 
-use crate::config::VOSK_MODEL_PATH;
-
-static MODEL: OnceCell<Model> = OnceCell::new();
-static RECOGNIZER: OnceCell<Mutex<Recognizer>> = OnceCell::new();
-
-pub fn init_vosk() {
-    if !RECOGNIZER.get().is_none() {return;} // already initialized
-
-    let model = Model::new(VOSK_MODEL_PATH).unwrap();
-    let mut recognizer = Recognizer::new(&model, 16000.0).unwrap();
-
-    recognizer.set_max_alternatives(10);
-    recognizer.set_words(true);
-    recognizer.set_partial_words(true);
-
-    MODEL.set(model);
-    RECOGNIZER.set(Mutex::new(recognizer));
+/// Оффлайн STT движок на основе Vosk
+pub struct VoskStt {
+    model: Arc<Model>,
+    sample_rate: f32,
 }
 
-pub fn recognize(data: &[i16], include_partial: bool) -> Option<String> {
-    let state = RECOGNIZER.get().unwrap().lock().unwrap().accept_waveform(data);
+impl VoskStt {
+    /// Создает новый STT движок с указанной моделью
+    pub fn new<P: AsRef<Path>>(model_path: P) -> Result<Self> {
+        let path = model_path.as_ref();
+        let path_str = path
+            .to_str()
+            .context("Путь к модели Vosk должен быть валидной UTF-8 строкой")?;
 
-    match state {
-        DecodingState::Running => {
-            if include_partial {
-                Some(RECOGNIZER.get().unwrap().lock().unwrap().partial_result().partial.into())
-            } else {
-                None
-            }
-        }
-        DecodingState::Finalized => {
-            // Result will always be multiple because we called set_max_alternatives
-            Some(
-                RECOGNIZER.get().unwrap().lock().unwrap()
-                    .result()
-                    .multiple()
-                    .unwrap()
-                    .alternatives
-                    .first()
-                    .unwrap()
-                    .text
-                    .into(),
-            )
-        }
-        DecodingState::Failed => None,
+        let model = Model::new(path_str).context("Не удалось загрузить модель Vosk")?;
+
+        log::info!(
+            "Vosk STT инициализирован. Модель: {}",
+            path.display()
+        );
+
+        Ok(Self {
+            model: Arc::new(model),
+            sample_rate: 16_000.0,
+        })
+    }
+
+    fn recognize_blocking(model: Arc<Model>, sample_rate: f32, samples: Vec<i16>) -> Result<String> {
+        let mut recognizer = Recognizer::new(&model, sample_rate)
+            .context("Не удалось создать распознаватель Vosk")?;
+
+        recognizer.accept_waveform(&samples);
+
+        let result = recognizer.final_result();
+        let text = result.multiple().and_then(|res| res.last()).and_then(|single| {
+            let alternatives = single.alternatives();
+            alternatives.first().map(|alt| alt.text.trim().to_string())
+        }).unwrap_or_default();
+
+        log::debug!("Vosk распознал: '{}'", text);
+
+        Ok(text)
     }
 }
 
-// pub fn stereo_to_mono(input_data: &[i16]) -> Vec<i16> {
-//     let mut result = Vec::with_capacity(input_data.len() / 2);
-//     result.extend(
-//         input_data
-//             .chunks_exact(2)
-//             .map(|chunk| chunk[0] / 2 + chunk[1] / 2),
-//     );
+#[async_trait]
+impl super::SpeechToText for VoskStt {
+    async fn transcribe(&mut self, pcm: &[i16]) -> Result<String> {
+        let model = self.model.clone();
+        let sample_rate = self.sample_rate;
+        let samples = pcm.to_vec();
 
-//     result
-// }
+        tokio::task::spawn_blocking(move || Self::recognize_blocking(model, sample_rate, samples))
+            .await
+            .context("Ошибка при выполнении задачи распознавания")?
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_invalid_path() {
+        let result = VoskStt::new("/path/that/does/not/exist");
+        assert!(result.is_err());
+    }
+}

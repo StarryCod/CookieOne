@@ -1,144 +1,127 @@
-pub mod structs;
-use structs::WakeWordEngine;
-use structs::SpeechToTextEngine;
-use structs::RecorderType;
-use structs::AudioType;
-
 use std::fs;
-use std::env;
-use std::path::PathBuf;
-use once_cell::sync::Lazy;
+use std::path::{Path, PathBuf};
+use serde::{Deserialize, Serialize};
+use anyhow::{Context, Result};
 
-use platform_dirs::{AppDirs};
-use rustpotter::{RustpotterConfig, WavFmt, DetectorConfig, FiltersConfig, ScoreMode, GainNormalizationConfig, BandPassConfig};
-
-use crate::{config, APP_DIRS, APP_CONFIG_DIR, APP_LOG_DIR};
-
-#[allow(dead_code)]
-
-pub fn init_dirs() -> Result<(), String> {
-    // infer app dirs
-    if APP_DIRS.get().is_some() {
-        return Ok(());
-    }
-
-    // cache_dir, config_dir, data_dir, state_dir
-    APP_DIRS.set(AppDirs::new(Some(config::BUNDLE_IDENTIFIER), false).unwrap()).unwrap();
-
-    // setup directories
-    let mut config_dir = PathBuf::from(&APP_DIRS.get().unwrap().config_dir);
-    let mut log_dir = PathBuf::from(&APP_DIRS.get().unwrap().config_dir);
-
-    // create dirs, if required
-    if !config_dir.exists() {
-        if fs::create_dir_all(&config_dir).is_err() {
-            config_dir = env::current_dir().expect("Cannot infer the config directory");
-            fs::create_dir_all(&config_dir).expect("Cannot create config directory, access denied?");
-        }
-    }
-
-    if !log_dir.exists() {
-        if fs::create_dir_all(&log_dir).is_err() {
-            log_dir = env::current_dir().expect("Cannot infer the log directory");
-            fs::create_dir_all(&log_dir).expect("Cannot create log directory, access denied?");
-        }
-    }
-
-    // store inferred paths
-    APP_CONFIG_DIR.set(config_dir).unwrap();
-    APP_LOG_DIR.set(log_dir).unwrap();
-
-    Ok(())
+/// Конфигурация приложения Cookie
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Config {
+    /// Порог активации wake-word (0.0 - 1.0)
+    pub wake_word_threshold: f32,
+    
+    /// Путь к модели wake-word RustPotter
+    pub wake_word_path: String,
+    
+    /// Настройки STT движка
+    pub stt_backend: SttBackendConfig,
+    
+    /// API ключ для Gemini (опционально)
+    pub gemini_api_key: Option<String>,
+    
+    /// Путь к файлу с фразами JARVIS
+    pub jarvis_phrases: String,
+    
+    /// Путь к файлу команд
+    pub commands_path: String,
+    
+    /// Индекс устройства для захвата аудио
+    pub listening_device: usize,
 }
 
+/// Конфигурация STT движка
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum SttBackendConfig {
+    Vosk {
+        model_path: String,
+    },
+    Gemini,
+}
 
-/*
-    Defaults.
- */
-pub const DEFAULT_AUDIO_TYPE: AudioType = AudioType::Kira;
-pub const DEFAULT_RECORDER_TYPE: RecorderType = RecorderType::PvRecorder;
-pub const DEFAULT_WAKE_WORD_ENGINE: WakeWordEngine = WakeWordEngine::Rustpotter;
-pub const DEFAULT_SPEECH_TO_TEXT_ENGINE: SpeechToTextEngine = SpeechToTextEngine::Vosk;
-
-pub const DEFAULT_VOICE: &str = "jarvis-og";
-
-pub const BUNDLE_IDENTIFIER: &str = "com.priler.jarvis";
-pub const DB_FILE_NAME: &str = "app.db";
-pub const LOG_FILE_NAME: &str = "log.txt";
-pub const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
-pub const AUTHOR_NAME: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
-pub const REPOSITORY_LINK: Option<&str> = option_env!("CARGO_PKG_REPOSITORY");
-pub const TG_OFFICIAL_LINK: Option<&str> = Some("https://t.me/howdyho_official");
-pub const FEEDBACK_LINK: Option<&str> = Some("https://t.me/jarvis_feedback_bot");
-
-/*
-    Tray.
- */
-pub const TRAY_ICON: &str = "32x32.png";
-pub const TRAY_TOOLTIP: &str = "Jarvis Voice Assistant";
-
-// RUSPOTTER
-pub const RUSPOTTER_MIN_SCORE: f32 = 0.62;
-pub const RUSTPOTTER_DEFAULT_CONFIG: Lazy<RustpotterConfig> = Lazy::new(|| {
-    RustpotterConfig {
-        fmt: WavFmt::default(),
-        detector: DetectorConfig {
-            avg_threshold: 0.,
-            threshold: 0.5,
-            min_scores: 15,
-            score_mode: ScoreMode::Average,
-            comparator_band_size: 5,
-            comparator_ref: 0.22
-        },
-        filters: FiltersConfig {
-            gain_normalizer: GainNormalizationConfig {
-                enabled: true,
-                gain_ref: None,
-                min_gain: 0.7,
-                max_gain: 1.0,
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            wake_word_threshold: 0.45,
+            wake_word_path: "assets/wakeword/cookie.rpw".to_string(),
+            stt_backend: SttBackendConfig::Vosk {
+                model_path: "vosk/model_small".to_string(),
             },
-            band_pass: BandPassConfig {
-                enabled: true,
-                low_cutoff: 80.,
-                high_cutoff: 400.,
-            }
+            gemini_api_key: None,
+            jarvis_phrases: "assets/phrases/jarvis_style.json".to_string(),
+            commands_path: "commands/commands.json".to_string(),
+            listening_device: 0,
         }
     }
-});
+}
 
-// PICOVOICE
-pub const COMMANDS_PATH: &str = "commands/";
-pub const KEYWORDS_PATH: &str = "picovoice/keywords/";
-pub const DEFAULT_KEYWORD: &str = "jarvis_windows.ppn";
-pub const DEFAULT_SENSITIVITY: f32 = 1.0;
+impl Config {
+    /// Загружает конфигурацию из файла
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let content = fs::read_to_string(path.as_ref())
+            .context("Не удалось прочитать файл конфигурации")?;
+        
+        let config: Config = serde_json::from_str(&content)
+            .context("Не удалось распарсить конфигурацию")?;
+        
+        Ok(config)
+    }
+    
+    /// Сохраняет конфигурацию в файл
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let content = serde_json::to_string_pretty(self)
+            .context("Не удалось сериализовать конфигурацию")?;
+        
+        fs::write(path.as_ref(), content)
+            .context("Не удалось записать файл конфигурации")?;
+        
+        Ok(())
+    }
+    
+    /// Загружает конфигурацию или создает с дефолтными значениями
+    pub fn load_or_default<P: AsRef<Path>>(path: P) -> Result<Self> {
+        if path.as_ref().exists() {
+            Self::load(path)
+        } else {
+            let config = Self::default();
+            
+            // Создаем родительские директории если нужно
+            if let Some(parent) = path.as_ref().parent() {
+                fs::create_dir_all(parent)?;
+            }
+            
+            config.save(&path)?;
+            Ok(config)
+        }
+    }
+}
 
-// VOSK
-// pub const VOSK_MODEL_PATH: &str = const_concat!(PUBLIC_PATH, "/vosk/model_small");
-pub const VOSK_FETCH_PHRASE: &str = "джарвис";
-pub const VOSK_MODEL_PATH: &str = "vosk/model_small";
-pub const VOSK_MIN_RATIO: f64 = 70.0;
+/// Получает путь к директории конфигурации приложения
+pub fn get_config_dir() -> Result<PathBuf> {
+    let dirs = directories::ProjectDirs::from("com", "cookie", "assistant")
+        .context("Не удалось определить директорию конфигурации")?;
+    
+    let config_dir = dirs.config_dir();
+    
+    if !config_dir.exists() {
+        fs::create_dir_all(config_dir)?;
+    }
+    
+    Ok(config_dir.to_path_buf())
+}
 
-// ETC
-pub const CMD_RATIO_THRESHOLD: f64 = 65f64;
-pub const CMS_WAIT_DELAY: std::time::Duration = std::time::Duration::from_secs(15);
+/// Получает путь к файлу конфигурации
+pub fn get_config_path() -> Result<PathBuf> {
+    Ok(get_config_dir()?.join("config.json"))
+}
 
-pub const ASSISTANT_GREET_PHRASES: [&str; 3] = ["greet1", "greet2", "greet3"];
-pub const ASSISTANT_PHRASES_TBR: [&str; 17] = [
-    "джарвис",
-    "сэр",
-    "слушаю сэр",
-    "всегда к услугам",
-    "произнеси",
-    "ответь",
-    "покажи",
-    "скажи",
-    "давай",
-    "да сэр",
-    "к вашим услугам сэр",
-    "всегда к вашим услугам сэр",
-    "запрос выполнен сэр",
-    "выполнен сэр",
-    "есть",
-    "загружаю сэр",
-    "очень тонкое замечание сэр",
-];
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_default_config() {
+        let config = Config::default();
+        assert_eq!(config.wake_word_threshold, 0.45);
+        assert!(config.gemini_api_key.is_none());
+    }
+}
