@@ -16,8 +16,6 @@ pub enum SpeechToTextEngine {
 #[derive(PartialEq, Debug)]
 pub enum RecorderType {
     Cpal,
-    PvRecorder,
-    PortAudio
 }
 
 #[derive(PartialEq, Debug)]

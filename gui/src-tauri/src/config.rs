@@ -56,7 +56,7 @@ pub fn init_dirs() -> Result<(), String> {
     Defaults.
  */
 pub const DEFAULT_AUDIO_TYPE: AudioType = AudioType::Kira;
-pub const DEFAULT_RECORDER_TYPE: RecorderType = RecorderType::PvRecorder;
+pub const DEFAULT_RECORDER_TYPE: RecorderType = RecorderType::Cpal;
 pub const DEFAULT_WAKE_WORD_ENGINE: WakeWordEngine = WakeWordEngine::Rustpotter;
 pub const DEFAULT_SPEECH_TO_TEXT_ENGINE: SpeechToTextEngine = SpeechToTextEngine::Vosk;
 

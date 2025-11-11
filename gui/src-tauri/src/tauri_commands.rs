@@ -6,9 +6,10 @@ pub use db::*;
 mod audio;
 pub use audio::*;
 
-// import PORCUPINE commands
+// import LISTENER commands
 mod listener;
 pub use listener::*;
+pub use listener::data_callback as cpal_data_callback;
 
 // import SYS commands
 mod sys;

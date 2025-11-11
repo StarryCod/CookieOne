@@ -270,34 +270,16 @@ fn start_recording() -> Result<bool, String> {
     // greet user
     events::play("run", TAURI_APP_HANDLE.get().unwrap());
 
-    // record
-    match recorder::RECORDER_TYPE.load(Ordering::SeqCst) {
-        recorder::RecorderType::PvRecorder => {
-            while !STOP_LISTENING.load(Ordering::SeqCst) {
-                recorder::read_microphone(&mut frame_buffer);
-                data_callback(&frame_buffer);
-            }
-
-            // stop
-            stop_recording();
-
-            Ok(true)
-        },
-        recorder::RecorderType::PortAudio => {
-            while !STOP_LISTENING.load(Ordering::SeqCst) {
-                recorder::read_microphone(&mut frame_buffer);
-                data_callback(&frame_buffer);
-            }
-
-            // stop
-            stop_recording();
-
-            Ok(true)
-        }
-        recorder::RecorderType::Cpal => {
-            todo!()
-        }
+    // record - CPAL is callback-based, so we just wait for stop signal
+    // the data_callback is called from within CPAL's audio thread
+    while !STOP_LISTENING.load(Ordering::SeqCst) {
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
+
+    // stop
+    stop_recording();
+
+    Ok(true)
 }
 
 fn stop_recording() {
