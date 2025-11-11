@@ -43,6 +43,15 @@ export function stopListening(callback) {
     });
 }
 
+export async function executeCommandByText(text: string) {
+    try {
+        const result = await invoke<string>('execute_command_by_text', { text });
+        console.log('Command executed:', result);
+    } catch (error) {
+        console.error('Failed to execute command:', error);
+    }
+}
+
 export function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }

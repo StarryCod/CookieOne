@@ -134,14 +134,16 @@ pub fn execute_command(
     cmd_config: &Config,
     // app_handle: &tauri::AppHandle,
 ) -> Result<bool, String> {
-    let sounds_directory = audio::get_sound_directory().unwrap();
+    let sounds_directory = audio::get_sound_directory();
 
     match cmd_config.command.action.as_str() {
         "voice" => {
-            // VOICE command type
-            let random_cmd_sound = format!("{}.wav", cmd_config.voice.sounds.choose(&mut rand::thread_rng()).unwrap());
-            // events::play(random_cmd_sound, app_handle);
-            audio::play_sound(&sounds_directory.join(random_cmd_sound));
+            if let Some(sounds_directory) = sounds_directory {
+                if let Some(random_cmd_sound) = cmd_config.voice.sounds.choose(&mut rand::thread_rng()) {
+                    let file = sounds_directory.join(format!("{}.wav", random_cmd_sound));
+                    audio::play_sound(&file);
+                }
+            }
 
             Ok(true)
         }
@@ -158,9 +160,12 @@ pub fn execute_command(
                 },
                 &cmd_config.command.exe_args,
             ) {
-                let random_cmd_sound = format!("{}.wav", cmd_config.voice.sounds.choose(&mut rand::thread_rng()).unwrap());
-                // events::play(random_cmd_sound, app_handle);
-                audio::play_sound(&sounds_directory.join(random_cmd_sound));
+                if let Some(sounds_directory) = sounds_directory {
+                    if let Some(random_cmd_sound) = cmd_config.voice.sounds.choose(&mut rand::thread_rng()) {
+                        let file = sounds_directory.join(format!("{}.wav", random_cmd_sound));
+                        audio::play_sound(&file);
+                    }
+                }
 
                 Ok(true)
             } else {
@@ -177,9 +182,12 @@ pub fn execute_command(
                 &cmd_config.command.cli_args,
             ) {
                     Ok(_) => {
-                        let random_cmd_sound = format!("{}.wav", cmd_config.voice.sounds.choose(&mut rand::thread_rng()).unwrap());
-                    // events::play(random_cmd_sound, app_handle);
-                        audio::play_sound(&sounds_directory.join(random_cmd_sound));
+                        if let Some(sounds_directory) = sounds_directory {
+                            if let Some(random_cmd_sound) = cmd_config.voice.sounds.choose(&mut rand::thread_rng()) {
+                                let file = sounds_directory.join(format!("{}.wav", random_cmd_sound));
+                                audio::play_sound(&file);
+                            }
+                        }
 
                     Ok(true)
                 },
@@ -191,18 +199,24 @@ pub fn execute_command(
         }
         "terminate" => {
             // TERMINATE command type
-            let random_cmd_sound = format!("{}.wav", cmd_config.voice.sounds.choose(&mut rand::thread_rng()).unwrap());
-            // events::play(random_cmd_sound, app_handle);
-            audio::play_sound(&sounds_directory.join(random_cmd_sound));
+            if let Some(sounds_directory) = sounds_directory {
+                if let Some(random_cmd_sound) = cmd_config.voice.sounds.choose(&mut rand::thread_rng()) {
+                    let file = sounds_directory.join(format!("{}.wav", random_cmd_sound));
+                    audio::play_sound(&file);
+                }
+            }
 
             std::thread::sleep(Duration::from_secs(2));
             std::process::exit(0);
         }
         "stop_chaining" => {
             // STOP_CHAINING command type
-            let random_cmd_sound = format!("{}.wav", cmd_config.voice.sounds.choose(&mut rand::thread_rng()).unwrap());
-            // events::play(random_cmd_sound, app_handle);
-            audio::play_sound(&sounds_directory.join(random_cmd_sound));
+            if let Some(sounds_directory) = sounds_directory {
+                if let Some(random_cmd_sound) = cmd_config.voice.sounds.choose(&mut rand::thread_rng()) {
+                    let file = sounds_directory.join(format!("{}.wav", random_cmd_sound));
+                    audio::play_sound(&file);
+                }
+            }
 
             Ok(false)
         }

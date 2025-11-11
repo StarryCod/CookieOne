@@ -1,0 +1,34 @@
+list:
+  - command:
+      action: "voice"
+    voice:
+      sounds:
+        - "yes_sir"
+    phrases:
+      - "какая погода"
+      - "погода сегодня"
+      - "прогноз погоды"
+
+  - command:
+      action: "voice"
+    voice:
+      sounds:
+        - "yes_sir"
+    phrases:
+      - "какие новости"
+      - "новости дня"
+      - "что нового"
+      - "последние новости"
+
+  - command:
+      action: "voice"
+    voice:
+      sounds:
+        - "ready"
+        - "yes_sir"
+    phrases:
+      - "справка"
+      - "помощь"
+      - "что ты умеешь"
+      - "список команд"
+      - "покажи команды"

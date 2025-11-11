@@ -1,0 +1,22 @@
+list:
+  - command:
+      action: "voice"
+    voice:
+      sounds:
+        - "yes_sir"
+        - "ready"
+    phrases:
+      - "тестовая команда"
+      - "проверка связи"
+      - "слышишь меня"
+
+  - command:
+      action: "cli"
+      cli_cmd: "echo"
+      cli_args: ["Кастомная команда выполнена успешно"]
+    voice:
+      sounds:
+        - "done"
+    phrases:
+      - "запусти кастомную команду"
+      - "выполни мой скрипт"

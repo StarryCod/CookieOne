@@ -56,6 +56,11 @@ pub fn init() -> Result<(), ()> {
 }
 
 pub fn play_sound(filename: &PathBuf) {
+    if !filename.exists() {
+        warn!("Sound file not found: {}", filename.display());
+        return;
+    }
+
     info!("Playing {}", filename.display());
 
     match AUDIO_TYPE.get().unwrap() {

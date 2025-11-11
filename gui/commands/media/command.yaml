@@ -1,0 +1,44 @@
+list:
+  - command:
+      action: "cli"
+      cli_cmd: "vlc"
+      cli_args: ["--started-from-file"]
+    voice:
+      sounds:
+        - "yes_sir"
+        - "ready"
+        - "done"
+    phrases:
+      - "включи музыку"
+      - "запусти музыку"
+      - "открой музыку"
+      - "включи плеер"
+      - "запусти плеер"
+
+  - command:
+      action: "cli"
+      cli_cmd: "vlc"
+      cli_args: ["--intf", "dummy", "--dummy-quiet", "vlc://pause"]
+    voice:
+      sounds:
+        - "yes_sir"
+        - "done"
+    phrases:
+      - "поставь на паузу"
+      - "пауза"
+      - "останови музыку"
+      - "стоп"
+
+  - command:
+      action: "cli"
+      cli_cmd: "vlc"
+      cli_args: ["--intf", "dummy", "--dummy-quiet", "vlc://quit"]
+    voice:
+      sounds:
+        - "yes_sir"
+        - "done"
+    phrases:
+      - "выключи музыку"
+      - "закрой музыку"
+      - "останови плеер"
+      - "выключи плеер"

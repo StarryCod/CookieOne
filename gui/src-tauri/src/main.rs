@@ -129,7 +129,7 @@ fn main() {
             tauri_commands::get_log_file_path,
             // Commands
             tauri_commands::get_commands_list,
-            tauri_commands::execute_command,
+            tauri_commands::execute_command_by_text,
             tauri_commands::get_jarvis_phrase,
             // Config commands
             tauri_commands::get_config,
