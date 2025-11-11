@@ -7,9 +7,10 @@ pub enum WakeWordEngine {
     Porcupine
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum SpeechToTextEngine {
-    Vosk
+    Vosk,
+    Gemini
 }
 
 #[derive(PartialEq, Debug)]

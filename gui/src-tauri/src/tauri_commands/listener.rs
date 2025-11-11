@@ -56,21 +56,12 @@ pub fn stop_listening() {
 }
 
 fn get_wake_word_engine() -> config::WakeWordEngine {
-    let selected_wake_word_engine;
-    if let Some(wwengine) = DB.lock().unwrap().get::<String>("selected_wake_word_engine") {
-        // from db
-        match wwengine.trim().to_lowercase().as_str() {
-            "rustpotter" => selected_wake_word_engine = config::WakeWordEngine::Rustpotter,
-            "vosk" => selected_wake_word_engine = config::WakeWordEngine::Vosk,
-            "picovoice" => selected_wake_word_engine = config::WakeWordEngine::Porcupine,
-            _ => selected_wake_word_engine = config::DEFAULT_WAKE_WORD_ENGINE
-        }
+    if let Some(settings) = DB.get() {
+        let guard = settings.lock().unwrap();
+        guard.wake_word_engine
     } else {
-        // default
-        selected_wake_word_engine = config::DEFAULT_WAKE_WORD_ENGINE; // set default wake_word engine
+        config::DEFAULT_WAKE_WORD_ENGINE
     }
-
-    selected_wake_word_engine
 }
 
 #[tauri::command(async)]

@@ -61,22 +61,31 @@ a {
 #wrapper {
   padding: 0;
   margin: 0;
+  background-color: #1a1a1a;
 }
 
-#header, main {
+#header {
+  background-color: #2a2a2a;
+  border-bottom: 1px solid #3a3a3a;
+  padding: 0 30px;
+}
+
+main {
   padding: 0 30px;
 }
 
 select, input {
-  color: #ccc!important;
+  color: #e0e0e0!important;
+  background: #2a2a2a!important;
+  border: 1px solid #3a3a3a!important;
 }
 
 .form {
   label {
-    font-weight: bold!important;
-    color: #8AC832!important;
+    font-weight: 600!important;
+    color: #3a7ca5!important;
     font-size: 15px!important;
-    border-bottom: 1px dotted gray;
+    border-bottom: 1px dashed #3a3a3a;
     margin-bottom: 10px!important;
 
     & + div {
@@ -85,6 +94,7 @@ select, input {
   }
 
   .svelteui-Tab-label {
-    font-size: 18px!important;
+    font-size: 16px!important;
+    color: #e0e0e0!important;
   }
 }

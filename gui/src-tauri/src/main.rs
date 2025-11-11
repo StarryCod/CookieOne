@@ -122,10 +122,19 @@ fn main() {
             tauri_commands::show_in_explorer,
             tauri_commands::open_url,
             // Etc commands
+            tauri_commands::get_app_version,
             tauri_commands::get_tg_official_link,
             tauri_commands::get_feedback_link,
             tauri_commands::get_repository_link,
             tauri_commands::get_log_file_path,
+            // Commands
+            tauri_commands::get_commands_list,
+            tauri_commands::execute_command,
+            tauri_commands::get_jarvis_phrase,
+            // Config commands
+            tauri_commands::get_config,
+            tauri_commands::save_gemini_api_key,
+            tauri_commands::set_listening_device,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

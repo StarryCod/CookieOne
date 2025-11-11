@@ -49,7 +49,7 @@ export function capitalizeFirstLetter(string) {
 
 export function showInExplorer(path) {
     (async () => {
-        invoke('show_in_folder', {path: path})
+        invoke('show_in_explorer', {path: path})
             .then((message) => {})
             .catch((error) => {
                 console.error(error);

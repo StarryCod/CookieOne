@@ -86,7 +86,7 @@
     selected_wake_word_engine = await invoke("db_read", {key: "selected_wake_word_engine"});
     api_key__picovoice = await invoke("db_read", {key: "api_key__picovoice"});
     api_key__openai = await invoke("db_read", {key: "api_key__openai"});
-	});
+    });
 
 </script>
 
@@ -106,7 +106,7 @@
 <Space h="xl" />
 {/if}
 
-<Tabs class="form" color='#8AC832' position="left">
+<Tabs class="form" color='#3a7ca5' position="left">
   <Tabs.Tab label='Общее' icon={Gear}>
     <Space h="sm" />
 
