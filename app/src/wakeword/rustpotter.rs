@@ -9,6 +9,7 @@ use rustpotter::{Rustpotter, RustpotterConfig, WavFmt, DetectorConfig, FiltersCo
 #[cfg(feature = "rustpotter-wakeword")]
 pub struct RustpotterDetector {
     detector: Rustpotter,
+    #[allow(dead_code)]
     threshold: f32,
 }
 
@@ -97,17 +98,20 @@ impl RustpotterDetector {
     }
     
     /// Возвращает текущий порог детекции
+    #[allow(dead_code)]
     pub fn threshold(&self) -> f32 {
         self.threshold
     }
     
     /// Устанавливает новый порог детекции
+    #[allow(dead_code)]
     pub fn set_threshold(&mut self, threshold: f32) {
         self.threshold = threshold;
         log::info!("Порог wake-word изменен на {}", threshold);
     }
     
     /// Сбрасывает внутреннее состояние детектора
+    #[allow(dead_code)]
     pub fn reset(&mut self) {
         // RustPotter автоматически управляет состоянием,
         // явный сброс не требуется в большинстве случаев

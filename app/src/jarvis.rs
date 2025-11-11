@@ -100,11 +100,13 @@ impl JarvisPhrases {
     }
     
     /// Возвращает случайную фразу обработки
+    #[allow(dead_code)]
     pub fn get_random_processing(&self) -> &str {
         self.get_random(&self.processing)
     }
     
     /// Возвращает случайную фразу завершения
+    #[allow(dead_code)]
     pub fn get_random_done(&self) -> &str {
         self.get_random(&self.done)
     }

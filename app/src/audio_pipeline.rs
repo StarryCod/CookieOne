@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 /// Аудио-пайплайн для захвата микрофонного ввода
 pub struct AudioPipeline {
+    #[allow(dead_code)]
     host: Host,
     device: Device,
     config: StreamConfig,
@@ -68,6 +69,7 @@ impl AudioPipeline {
     }
     
     /// Список доступных устройств ввода
+    #[allow(dead_code)]
     pub fn list_devices() -> Result<Vec<String>> {
         let host = cpal::default_host();
         let devices: Vec<String> = host
@@ -146,6 +148,7 @@ impl AudioPipeline {
     }
     
     /// Проверяет, запущен ли пайплайн
+    #[allow(dead_code)]
     pub fn is_running(&self) -> bool {
         *self.is_running.lock()
     }
@@ -158,6 +161,7 @@ impl Drop for AudioPipeline {
 }
 
 /// Сохраняет PCM i16 сэмплы в WAV файл
+#[allow(dead_code)]
 pub fn save_to_wav<P: AsRef<std::path::Path>>(path: P, samples: &[i16]) -> Result<()> {
     let spec = hound::WavSpec {
         channels: 1,
