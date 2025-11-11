@@ -3,7 +3,7 @@ use std::path::Path;
 #[cfg(feature = "rustpotter-wakeword")]
 use anyhow::{Context, Result};
 #[cfg(feature = "rustpotter-wakeword")]
-use rustpotter::{Rustpotter, RustpotterConfig, WavFmt, DetectorConfig, ScoreMode};
+use rustpotter::{Rustpotter, RustpotterConfig, WavFmt, DetectorConfig, FiltersConfig, ScoreMode, GainNormalizationConfig, BandPassConfig, Endianness};
 
 /// Детектор wake-word на основе RustPotter
 #[cfg(feature = "rustpotter-wakeword")]
@@ -20,17 +20,32 @@ impl RustpotterDetector {
         let config = RustpotterConfig {
             fmt: WavFmt {
                 sample_rate: 16000,
-                sample_format: rustpotter::SampleFormat::I16,
+                sample_format: hound::SampleFormat::Int,
+                bits_per_sample: 16,
                 channels: 1,
+                endianness: Endianness::Little,
             },
             detector: DetectorConfig {
                 threshold,
                 avg_threshold: 0.0,
                 min_scores: 5,
-                score_mode: ScoreMode::Average,
-                ..Default::default()
+                score_mode: ScoreMode::Max,
+                comparator_band_size: 5,
+                comparator_ref: 0.22,
             },
-            ..Default::default()
+            filters: FiltersConfig {
+                gain_normalizer: GainNormalizationConfig {
+                    enabled: true,
+                    gain_ref: None,
+                    min_gain: 0.7,
+                    max_gain: 1.0,
+                },
+                band_pass: BandPassConfig {
+                    enabled: true,
+                    low_cutoff: 80.0,
+                    high_cutoff: 400.0,
+                },
+            },
         };
         
         let mut detector = Rustpotter::new(&config)
@@ -38,8 +53,12 @@ impl RustpotterDetector {
             .context("Не удалось создать детектор RustPotter")?;
         
         // Загружаем модель wake-word
+        let model_path_str = model_path.as_ref()
+            .to_str()
+            .context("Путь к модели должен быть валидной UTF-8 строкой")?;
+        
         detector
-            .add_wakeword_from_file(model_path.as_ref())
+            .add_wakeword_from_file(model_path_str)
             .map_err(|err| anyhow::anyhow!(err))
             .context("Не удалось загрузить модель wake-word")?;
         

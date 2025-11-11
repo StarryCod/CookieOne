@@ -6,9 +6,6 @@ mod stt;
 mod audio_pipeline;
 
 use anyhow::{Context, Result};
-use std::path::PathBuf;
-use std::sync::Arc;
-use parking_lot::Mutex;
 
 fn main() -> Result<()> {
     // Инициализируем логирование

@@ -16,7 +16,6 @@ rodio = "0.17"
 rustpotter = { git = "https://github.com/GiviMAD/rustpotter.git", tag = "v2.0.0", optional = true }
 
 # STT движки
-vosk = "0.3"
 
 # HTTP клиент для Gemini API
 reqwest = { version = "0.11", features = ["json", "multipart"] }
