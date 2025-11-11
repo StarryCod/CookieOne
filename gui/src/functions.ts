@@ -43,13 +43,22 @@ export function stopListening(callback) {
     });
 }
 
+export async function executeCommandByText(text: string) {
+    try {
+        const result = await invoke<string>('execute_command_by_text', { text });
+        console.log('Command executed:', result);
+    } catch (error) {
+        console.error('Failed to execute command:', error);
+    }
+}
+
 export function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
 export function showInExplorer(path) {
     (async () => {
-        invoke('show_in_folder', {path: path})
+        invoke('show_in_explorer', {path: path})
             .then((message) => {})
             .catch((error) => {
                 console.error(error);

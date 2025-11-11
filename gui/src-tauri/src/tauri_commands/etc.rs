@@ -50,5 +50,5 @@ pub fn get_feedback_link() -> String {
 
 #[tauri::command]
 pub fn get_log_file_path() -> String {
-    format!("{}", APP_LOG_DIR.lock().unwrap())
+    format!("{}", APP_LOG_DIR.get().unwrap().display())
 }

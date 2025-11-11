@@ -1,0 +1,26 @@
+list:
+  - command:
+      action: "cli"
+      cli_cmd: "echo"
+      cli_args: ["Автоматизация запущена"]
+    voice:
+      sounds:
+        - "yes_sir"
+        - "ready"
+    phrases:
+      - "запусти автоматизацию"
+      - "начни сценарий"
+      - "выполни автоматизацию"
+      - "запусти сценарий"
+
+  - command:
+      action: "cli"
+      cli_cmd: "echo"
+      cli_args: ["Автоматизация завершена"]
+    voice:
+      sounds:
+        - "done"
+    phrases:
+      - "останови автоматизацию"
+      - "заверши сценарий"
+      - "останови сценарий"

@@ -25,3 +25,11 @@ pub use fs::*;
 // import ETC commands
 mod etc;
 pub use etc::*;
+
+// import custom commands
+mod commands;
+pub use commands::*;
+
+// import config commands
+mod config;
+pub use config::*;

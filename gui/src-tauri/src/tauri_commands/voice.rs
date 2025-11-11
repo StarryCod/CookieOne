@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::BufReader;
 use rodio::{Decoder, OutputStream, Sink};
+use crate::SOUND_DIR;
 
 #[tauri::command(async)]
 pub fn play_sound(filename: &str, sleep: bool) {
@@ -26,4 +27,17 @@ pub fn play_sound(filename: &str, sleep: bool) {
         // has finished playing all its queued sounds.
         sink.sleep_until_end();
     }
+}
+
+#[tauri::command]
+pub fn get_voice_directory() -> String {
+    SOUND_DIR.to_str().unwrap().to_string()
+}
+
+#[tauri::command]
+pub fn get_all_voices() -> Vec<String> {
+    vec![
+        "jarvis-og".to_string(),
+        "jarvis-remake".to_string(),
+    ]
 }

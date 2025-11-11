@@ -1,4 +1,6 @@
 use std::process::Command;
+use std::path::PathBuf;
+use std::fs::metadata;
 
 // taken from https://github.com/tauri-apps/tauri/issues/4062#issuecomment-1338048169
 #[tauri::command]
@@ -41,6 +43,38 @@ pub fn show_in_folder(path: String) {
   {
     Command::new("open")
         .args(["-R", &path])
+        .spawn()
+        .unwrap();
+  }
+}
+
+#[tauri::command]
+pub fn show_in_explorer(path: String) {
+  show_in_folder(path);
+}
+
+#[tauri::command]
+pub fn open_url(url: String) {
+  #[cfg(target_os = "windows")]
+  {
+    Command::new("cmd")
+        .args(["/C", "start", &url])
+        .spawn()
+        .unwrap();
+  }
+
+  #[cfg(target_os = "linux")]
+  {
+    Command::new("xdg-open")
+        .arg(&url)
+        .spawn()
+        .unwrap();
+  }
+
+  #[cfg(target_os = "macos")]
+  {
+    Command::new("open")
+        .arg(&url)
         .spawn()
         .unwrap();
   }

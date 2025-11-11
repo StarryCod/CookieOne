@@ -1,0 +1,34 @@
+list:
+  - command:
+      action: "voice"
+    voice:
+      sounds:
+        - "yes_sir"
+        - "ready"
+    phrases:
+      - "какое время"
+      - "сколько времени"
+      - "который час"
+
+  - command:
+      action: "terminate"
+    voice:
+      sounds:
+        - "goodbye"
+    phrases:
+      - "выключись"
+      - "завершить работу"
+      - "закройся"
+      - "выход"
+      - "джарвис выключись"
+
+  - command:
+      action: "stop_chaining"
+    voice:
+      sounds:
+        - "done"
+    phrases:
+      - "хватит"
+      - "достаточно"
+      - "стоп"
+      - "остановись"
