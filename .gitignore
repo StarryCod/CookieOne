@@ -21,3 +21,18 @@ lerna-debug.log*
 
 # Etc
 psd
+
+# Build artifacts
+build.log
+/target
+**/target
+**/node_modules
+**/dist
+**/.routify
+
+# Models and samples
+gui/src-tauri/models/*.zip
+gui/src-tauri/wakeword-samples/
+
+# OS files
+Thumbs.db
