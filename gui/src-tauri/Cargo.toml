@@ -30,6 +30,7 @@ atomic_enum = "0.2.0"
 portaudio = "0.7.0"
 platform-dirs = "0.3.0"
 simple-log = "1.6.0"
+chrono = "0.4.38"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
