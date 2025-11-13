@@ -1,12 +1,8 @@
-use porcupine::{Porcupine, PorcupineBuilder};
 use std::ops::Sub;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::path::Path;
-use log::{info, warn, error};
+use log::{info, warn};
 use rustpotter::{Rustpotter, RustpotterConfig, WavFmt, DetectorConfig, FiltersConfig, ScoreMode, GainNormalizationConfig, BandPassConfig};
-// use dasp::{sample::ToSample, Sample};
 
-// use crate::events::Payload;
 use tauri::Manager;
 
 use rand::seq::SliceRandom;
@@ -33,9 +29,6 @@ static STOP_LISTENING: AtomicBool = AtomicBool::new(false);
 // store tauri app_handle
 static TAURI_APP_HANDLE: OnceCell<tauri::AppHandle> = OnceCell::new();
 
-// store porcupine instance
-static PORCUPINE: OnceCell<Porcupine> = OnceCell::new();
-
 // store rustpotter instance
 static RUSTPOTTER: OnceCell<Mutex<Rustpotter>> = OnceCell::new();
 
@@ -56,21 +49,8 @@ pub fn stop_listening() {
 }
 
 fn get_wake_word_engine() -> config::WakeWordEngine {
-    let selected_wake_word_engine;
-    if let Some(wwengine) = DB.lock().unwrap().get::<String>("selected_wake_word_engine") {
-        // from db
-        match wwengine.trim().to_lowercase().as_str() {
-            "rustpotter" => selected_wake_word_engine = config::WakeWordEngine::Rustpotter,
-            "vosk" => selected_wake_word_engine = config::WakeWordEngine::Vosk,
-            "picovoice" => selected_wake_word_engine = config::WakeWordEngine::Porcupine,
-            _ => selected_wake_word_engine = config::DEFAULT_WAKE_WORD_ENGINE
-        }
-    } else {
-        // default
-        selected_wake_word_engine = config::DEFAULT_WAKE_WORD_ENGINE; // set default wake_word engine
-    }
-
-    selected_wake_word_engine
+    let settings = DB.get().expect("DB not initialized").lock().unwrap();
+    settings.wake_word_engine
 }
 
 #[tauri::command(async)]
@@ -89,15 +69,11 @@ pub fn start_listening(app_handle: tauri::AppHandle) -> Result<bool, String> {
     match get_wake_word_engine() {
         config::WakeWordEngine::Rustpotter => {
             info!("Starting RUSTPOTTER wake-word engine ...");
-            return rustpotter_init();
-        },
+            rustpotter_init()
+        }
         config::WakeWordEngine::Vosk => {
             info!("Starting VOSK wake-word engine ...");
-            return vosk_init();
-        },
-        config::WakeWordEngine::Porcupine => {
-            info!("Starting PICOVOICE PORCUPINE wake-word engine ...");
-            return picovoice_init();
+            vosk_init()
         }
     }
 }
@@ -191,51 +167,40 @@ fn keyword_callback(_keyword_index: i32) {
 }
 
 pub fn data_callback(frame_buffer: &[i16]) {
-    // println!("DATA CALLBACK {}", frame_buffer.len());
     match get_wake_word_engine() {
         config::WakeWordEngine::Rustpotter => {
             let mut lock = RUSTPOTTER.get().unwrap().lock();
             let rustpotter = lock.as_mut().unwrap();
-            let detection = rustpotter.process_i16(&frame_buffer);
+            let detection = rustpotter.process_i16(frame_buffer);
 
             if let Some(detection) = detection {
                 if detection.score > config::RUSPOTTER_MIN_SCORE {
-                    info!("Rustpotter detection info:\n{:?}", detection);
+                    info!("Rustpotter detection! Score: {:.2}", detection.score);
                     keyword_callback(0);
                 } else {
-                    info!("Rustpotter detection info:\n{:?}", detection);
+                    info!("Rustpotter detection below threshold: {:.2}", detection.score);
                 }
             }
-        },
+        }
         config::WakeWordEngine::Vosk => {
-            // recognize & convert to sequence
-            let recognized_phrase = vosk::recognize(&frame_buffer, true).unwrap_or("".into());
+            let recognized_phrase = vosk::recognize(frame_buffer, true).unwrap_or_default();
 
             if !recognized_phrase.trim().is_empty() {
-                info!("Rec: {}", recognized_phrase);
+                info!("Vosk recognized: {}", recognized_phrase);
                 let recognized_phrases = recognized_phrase.split_whitespace();
                 for phrase in recognized_phrases {
-                    let recognized_phrase_chars = phrase.trim().to_lowercase().chars().collect::<Vec<_>>();
-            
-                    // compare
-                    let compare_ratio = seqdiff::ratio(&config::VOSK_FETCH_PHRASE.chars().collect::<Vec<_>>(), &recognized_phrase_chars);
-                    info!("OG phrase: {:?}", &config::VOSK_FETCH_PHRASE);
-                    info!("Recognized phrase: {:?}", &recognized_phrase_chars);
-                    info!("Compare ratio: {}", compare_ratio);
+                    let recognized_phrase_chars: Vec<char> = phrase.trim().to_lowercase().chars().collect();
+                    let target_phrase_chars: Vec<char> = config::VOSK_FETCH_PHRASE.chars().collect();
+
+                    let compare_ratio = seqdiff::ratio(&target_phrase_chars, &recognized_phrase_chars);
+                    info!("Target: {:?}, Recognized: {:?}, Ratio: {}", 
+                        config::VOSK_FETCH_PHRASE, phrase, compare_ratio);
 
                     if compare_ratio >= config::VOSK_MIN_RATIO {
-                        info!("Phrase activated.");
+                        info!("Wake word activated!");
                         keyword_callback(0);
                         break;
                     }
-                }
-            }
-        },
-        config::WakeWordEngine::Porcupine => {
-            if let Ok(keyword_index) = PORCUPINE.get().unwrap().process(&frame_buffer) {
-                if keyword_index >= 0 {
-                    // println!("Yes, sir! {}", keyword_index);
-                    keyword_callback(keyword_index);
                 }
             }
         }
@@ -249,62 +214,46 @@ fn start_recording() -> Result<bool, String> {
     // idenfity frame length
     match get_wake_word_engine() {
         config::WakeWordEngine::Rustpotter => {
-            // start recording for Rustpotter
-            // You need a buffer of size `rustpotter.get_samples_per_frame()` when using samples.
-            // You need a buffer of size `rustpotter.get_bytes_per_frame()` when using bytes.
-            frame_length = RUSTPOTTER.get().unwrap().lock().unwrap().get_samples_per_frame();
+            frame_length = RUSTPOTTER
+                .get()
+                .expect("Rustpotter not initialised")
+                .lock()
+                .unwrap()
+                .get_samples_per_frame();
             recorder::FRAME_LENGTH.store(frame_length as u32, Ordering::SeqCst);
-        },
+        }
         config::WakeWordEngine::Vosk => {
-            // start recording for Vosk
             frame_length = 128;
             recorder::FRAME_LENGTH.store(frame_length as u32, Ordering::SeqCst);
-        },
-        config::WakeWordEngine::Porcupine => {
-            // start recording for Porcupine
-            frame_length = PORCUPINE.get().unwrap().frame_length() as usize;
-            recorder::FRAME_LENGTH.store(PORCUPINE.get().unwrap().frame_length(), Ordering::SeqCst);
         }
     }
 
-    // define frame buffer
     let mut frame_buffer: Vec<i16> = vec![0; frame_length];
 
-    // init stuff
-    recorder::init(); // init
-    recorder::start_recording(); // start
+    recorder::init()?;
+    recorder::start_recording();
     LISTENING.store(true, Ordering::SeqCst);
     info!("START listening ...");
 
     // greet user
     events::play("run", TAURI_APP_HANDLE.get().unwrap());
 
-    // record
-    match recorder::RECORDER_TYPE.load(Ordering::SeqCst) {
-        recorder::RecorderType::PvRecorder => {
+    // record loop
+    let recorder_type_val = recorder::RECORDER_TYPE.load(Ordering::SeqCst);
+    let recorder_type = recorder::RecorderType::from(recorder_type_val);
+
+    match recorder_type {
+        recorder::RecorderType::PvRecorder | recorder::RecorderType::PortAudio => {
             while !STOP_LISTENING.load(Ordering::SeqCst) {
                 recorder::read_microphone(&mut frame_buffer);
                 data_callback(&frame_buffer);
             }
-
-            // stop
             stop_recording();
-
-            Ok(true)
-        },
-        recorder::RecorderType::PortAudio => {
-            while !STOP_LISTENING.load(Ordering::SeqCst) {
-                recorder::read_microphone(&mut frame_buffer);
-                data_callback(&frame_buffer);
-            }
-
-            // stop
-            stop_recording();
-
             Ok(true)
         }
         recorder::RecorderType::Cpal => {
-            todo!()
+            warn!("Cpal recorder not implemented yet");
+            Err("Cpal recorder not implemented".into())
         }
     }
 }
@@ -371,46 +320,6 @@ fn rustpotter_init() -> Result<bool, String> {
 }
 
 fn vosk_init() -> Result<bool, String> {
-    start_recording()
-}
-
-fn picovoice_init() -> Result<bool, String> {
-    // VARS
-    let porcupine: Porcupine;
-    let picovoice_api_key: String;
-
-    // Retrieve API key from DB
-    if let Some(pkey) = DB.lock().unwrap().get::<String>("api_key__picovoice") {
-        picovoice_api_key = pkey;
-    } else {
-        warn!("Picovoice API key is not set!");
-        return Err("Picovoice API key is not set!".into());
-    }
-
-    // Create instance of Porcupine with the given API key
-    match PorcupineBuilder::new_with_keyword_paths(picovoice_api_key, &[Path::new(config::KEYWORDS_PATH).join("jarvis_windows.ppn")])
-        .sensitivities(&[1.0f32]) // max sensitivity possible
-        .init() {
-            Ok(pinstance) => {
-                // porcupine successfully initialized with the valid API key
-                info!("Porcupine successfully initialized with the valid API key ...");
-                porcupine = pinstance;
-            }
-            Err(e) => {
-                error!("Porcupine error: either API key is not valid or there is no internet connection");
-                error!("Error details: {}", e);
-                return Err(
-                    "Porcupine error: either API key is not valid or there is no internet connection"
-                        .into(),
-                );
-            }
-    }
-
-    // store
-    if PORCUPINE.get().is_none() {
-        PORCUPINE.set(porcupine);
-    }
-
-    // start recording
+    info!("Vosk wake-word engine initialized (stub)");
     start_recording()
 }
