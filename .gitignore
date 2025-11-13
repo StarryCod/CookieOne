@@ -21,3 +21,12 @@ lerna-debug.log*
 
 # Etc
 psd
+
+# Build script artifacts
+dist/
+build_logs/
+build_reports/
+__pycache__/
+*.pyc
+.venv/
+venv/
