@@ -22,6 +22,10 @@ pub use voice::*;
 mod fs;
 pub use fs::*;
 
+// import ONBOARDING commands
+mod onboarding;
+pub use onboarding::*;
+
 // import ETC commands
 mod etc;
 pub use etc::*;
