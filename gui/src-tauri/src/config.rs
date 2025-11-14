@@ -1,8 +1,8 @@
 pub mod structs;
-use structs::WakeWordEngine;
-use structs::SpeechToTextEngine;
-use structs::RecorderType;
-use structs::AudioType;
+pub use structs::WakeWordEngine;
+pub use structs::SpeechToTextEngine;
+pub use structs::RecorderType;
+pub use structs::AudioType;
 
 use std::fs;
 use std::env;

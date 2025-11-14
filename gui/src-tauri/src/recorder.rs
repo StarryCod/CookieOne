@@ -7,7 +7,7 @@ use once_cell::sync::OnceCell;
 use crate::{DB, config, config::structs::RecorderType};
 
 static RECORDER_TYPE: OnceCell<RecorderType> = OnceCell::new();
-static FRAME_LENGTH: OnceCell<u32> = OnceCell::new();
+pub(crate) static FRAME_LENGTH: OnceCell<u32> = OnceCell::new();
 
 pub fn init() -> Result<(), ()> {
     // set default recorder type
@@ -109,5 +109,5 @@ pub fn stop_recording() -> Result<(), ()> {
 }
 
 pub fn get_selected_microphone_index() -> i32 {
-    DB.get().unwrap().microphone
+    DB.get().unwrap().lock().unwrap().microphone
 }

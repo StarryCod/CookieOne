@@ -1,95 +1,41 @@
-mod menu;
+use tauri::{AppHandle, CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
 
-use tray_icon::{
-    menu::{AboutMetadata, Menu, MenuEvent, MenuItem, PredefinedMenuItem},
-    TrayEvent, TrayIconBuilder,
-};
-use winit::event_loop::{ControlFlow, EventLoopBuilder};
-use image;
-use winit::platform::windows::EventLoopBuilderExtWindows;
+use crate::events;
 
-use crate::config;
+const CMD_RESTART: &str = "restart";
+const CMD_SETTINGS: &str = "settings";
+const CMD_QUIT: &str = "quit";
 
-pub fn init() {
-    // spawn tray icon
-    // New thread will prevent tray icon to work on MacOS
-    // @TODO: MacOS support.
-    std::thread::spawn(|| {
+pub fn build_tray() -> SystemTray {
+    let restart = CustomMenuItem::new(CMD_RESTART, "Перезапуск");
+    let settings = CustomMenuItem::new(CMD_SETTINGS, "Настройки");
+    let quit = CustomMenuItem::new(CMD_QUIT, "Выход");
 
-        // load tray icon
-        let icon_path = format!("{}/icons/{}", env!("CARGO_MANIFEST_DIR"), config::TRAY_ICON);
-        let icon = load_icon(std::path::Path::new(&icon_path));
+    let tray_menu = SystemTrayMenu::new()
+        .add_item(restart)
+        .add_item(settings)
+        .add_native_item(SystemTrayMenuItem::Separator)
+        .add_item(quit);
 
-        // form tray menu
-        let tray_menu = Menu::with_items(&[
-            &MenuItem::new("Перезапуск", true, None),
-            &MenuItem::new("Настройки", true, None),
-            &MenuItem::new("Выход", true, None)
-        ]);
-
-        #[cfg(not(target_os = "linux"))]
-        let mut tray_icon = Some(
-            TrayIconBuilder::new()
-                .with_menu(Box::new(tray_menu))
-                .with_tooltip(config::TRAY_TOOLTIP)
-                .with_icon(icon)
-                .build()
-                .unwrap()
-        );
-
-        // Since winit doesn't use gtk on Linux, and we need gtk for
-        // the tray icon to show up, we need to initialize gtk and create the tray_icon
-        #[cfg(target_os = "linux")]
-        {
-            use tray_icon::menu::Menu;
-
-            gtk::init().unwrap();
-            let _tray_icon = TrayIconBuilder::new()
-                .with_menu(Box::new(tray_menu))
-                .with_tooltip(config::TRAY_TOOLTIP)
-                .with_icon(icon)
-                .build()
-                .unwrap();
-
-            gtk::main();
-        }
-
-        // run the event loop
-        let event_loop = EventLoopBuilder::new().with_any_thread(true).build();
-
-        let menu_channel = MenuEvent::receiver();
-        let tray_channel = TrayEvent::receiver();
-
-        event_loop.run(move |_event, _, control_flow| {
-            *control_flow = ControlFlow::Poll;
-
-            //if let Ok(event) = tray_channel.try_recv() {
-            //    println!("tray event: {event:?}");
-            //}
-
-            if let Ok(event) = menu_channel.try_recv() {
-                println!("menu event: {:?}", event);
-
-                if event.id == 1002 {
-                    std::process::exit(0);
-                }
-            }
-        });
-
-    });
-
-    info!("Tray initialized.");
+    SystemTray::new().with_menu(tray_menu)
 }
 
-fn load_icon(path: &std::path::Path) -> tray_icon::icon::Icon {
-    let (icon_rgba, icon_width, icon_height) = {
-        let image = image::open(path)
-            .expect("Failed to open icon path")
-            .into_rgba8();
-        let (width, height) = image.dimensions();
-        let rgba = image.into_raw();
-        (rgba, width, height)
-    };
-    tray_icon::icon::Icon::from_rgba(icon_rgba, icon_width, icon_height)
-        .expect("Failed to open icon")
+pub fn handle_tray_event(app: &AppHandle, event: &SystemTrayEvent) {
+    match event {
+        SystemTrayEvent::MenuItemClick { id, .. } => {
+            match id.as_str() {
+                CMD_RESTART => {
+                    events::play("restart", app);
+                }
+                CMD_SETTINGS => {
+                    app.emit_all("open-settings", ()).unwrap();
+                }
+                CMD_QUIT => {
+                    app.exit(0);
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
 }

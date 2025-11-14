@@ -1,4 +1,16 @@
 use std::process::Command;
+use std::fs::metadata;
+use std::path::PathBuf;
+use tauri::AppHandle;
+
+#[tauri::command]
+pub fn get_app_path(app_handle: AppHandle) -> Result<String, String> {
+    app_handle
+        .path_resolver()
+        .app_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .ok_or_else(|| "Could not resolve app path".to_string())
+}
 
 // taken from https://github.com/tauri-apps/tauri/issues/4062#issuecomment-1338048169
 #[tauri::command]
