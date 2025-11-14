@@ -2,8 +2,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::path::PathBuf;
+use std::env;
+use std::sync::Mutex;
 
-use once_cell::sync::OnceCell;
+use once_cell::sync::{OnceCell, Lazy};
 use platform_dirs::{AppDirs};
 
 // expose the config
@@ -40,11 +42,13 @@ mod tauri_commands;
 mod events;
 
 // some global data
-static APP_DIRS: OnceCell<AppDirs> = OnceCell::new();
-static APP_CONFIG_DIR: OnceCell<PathBuf> = OnceCell::new();
-static APP_LOG_DIR: OnceCell<PathBuf> = OnceCell::new();
-static DB: OnceCell<db::structs::Settings> = OnceCell::new();
-static COMMANDS: OnceCell<Vec<AssistantCommand>> = OnceCell::new();
+pub(crate) static APP_DIR: Lazy<PathBuf> = Lazy::new(|| {env::current_dir().unwrap()});
+pub(crate) static SOUND_DIR: Lazy<PathBuf> = Lazy::new(|| {APP_DIR.clone().join("sound")});
+pub(crate) static APP_DIRS: OnceCell<AppDirs> = OnceCell::new();
+pub(crate) static APP_CONFIG_DIR: OnceCell<PathBuf> = OnceCell::new();
+pub(crate) static APP_LOG_DIR: OnceCell<PathBuf> = OnceCell::new();
+pub(crate) static DB: OnceCell<Mutex<db::structs::Settings>> = OnceCell::new();
+pub(crate) static COMMANDS: OnceCell<Vec<AssistantCommand>> = OnceCell::new();
 
 fn main() -> Result<(), String> {
     // initialize directories
@@ -59,7 +63,7 @@ fn main() -> Result<(), String> {
     info!("Log directory is: {}", APP_LOG_DIR.get().unwrap().display());
 
     // initialize database (settings)
-    DB.set(db::init_settings());
+    DB.set(Mutex::new(db::init_settings())).unwrap();
 
     Ok(())
 }
