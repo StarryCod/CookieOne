@@ -34,20 +34,9 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.priler.jarvis",
+      "identifier": "com.priler.cookie",
       "targets": "all",
-      "resources": [
-        "commands",
-        "sound",
-        "vosk/model_small",
-        "picovoice",
-        "rustpotter",
-        "libvosk.dll",
-        "libstdc++-6.dll",
-        "libwinpthread-1.dll",
-        "libgcc_s_seh-1.dll",
-        "libvosk.lib"
-      ]
+      "resources": []
     },
     "security": {
       "csp": null

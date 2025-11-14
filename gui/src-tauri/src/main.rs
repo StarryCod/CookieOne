@@ -83,6 +83,9 @@ fn main() {
         warn!("Failed to init audio: {}", err);
     }
 
+    // initialize events
+    events::init();
+
     // initialize tray
     tray::init();
 

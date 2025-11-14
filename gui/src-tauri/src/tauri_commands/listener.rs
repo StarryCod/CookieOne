@@ -114,7 +114,7 @@ fn keyword_callback(_keyword_index: i32) {
 
                 // infer command
                 if let Some((cmd_path, cmd_config)) =
-                    assistant_commands::fetch_command(&test, &COMMANDS)
+                    assistant_commands::fetch_command(&test, COMMANDS.get().unwrap())
                 {
                     println!("Recognized (filtered): {}", test);
                     println!("Command found: {:?}", cmd_path);

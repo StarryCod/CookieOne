@@ -1,41 +1,28 @@
-use tauri::Manager;
+use serde::{Deserialize, Serialize};
+use tauri::AppHandle;
 
-// the payload type must implement `Serialize` and `Clone`.
-#[derive(Clone, serde::Serialize)]
-pub struct Payload {
-    pub data: String,
-}
-
-#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EventTypes {
-    AudioPlay,
-    AssistantWaiting,
     AssistantGreet,
-    CommandStart,
-    CommandInProcess,
-    CommandEnd,
+    AssistantWaiting,
+    CommandExecuted,
 }
 
 impl EventTypes {
     pub fn get(&self) -> &str {
         match self {
-            Self::AudioPlay => "audio-play",
-            Self::AssistantWaiting => "assistant-waiting",
-            Self::AssistantGreet => "assistant-greet",
-            Self::CommandStart => "command-start",
-            Self::CommandInProcess => "command-in-process",
-            Self::CommandEnd => "command-end",
+            EventTypes::AssistantGreet => "assistant-greet",
+            EventTypes::AssistantWaiting => "assistant-waiting",
+            EventTypes::CommandExecuted => "command-executed",
         }
     }
 }
 
-pub fn play(phrase: &str, app_handle: &tauri::AppHandle) {
-    app_handle
-        .emit_all(
-            EventTypes::AudioPlay.get(),
-            Payload {
-                data: phrase.into(),
-            },
-        )
-        .unwrap();
+pub fn init() {
+    info!("Events subsystem initialised (stub)");
+}
+
+pub fn play(_sound_name: &str, _app_handle: &AppHandle) {
+    // Stub: в реальной имплементации здесь воспроизведение звука
+    info!("Playing sound: {}", _sound_name);
 }
