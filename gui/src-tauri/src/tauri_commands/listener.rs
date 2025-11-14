@@ -1,5 +1,4 @@
 use porcupine::{Porcupine, PorcupineBuilder};
-use std::ops::Sub;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::path::Path;
 use log::{info, warn, error};

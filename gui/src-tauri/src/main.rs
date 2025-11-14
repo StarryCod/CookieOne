@@ -20,14 +20,31 @@ mod db;
 // include tray
 mod tray;
 
+// include recorder
+mod recorder;
+
+// include speech-to-text (vosk)
+mod vosk;
+
+// include assistant_commands
+mod assistant_commands;
+use assistant_commands::AssistantCommand;
+
+// include audio
+mod audio;
+
 // include tauri commands
-// mod tauri_commands;
+mod tauri_commands;
+
+// include events
+mod events;
 
 // some global data
 static APP_DIRS: OnceCell<AppDirs> = OnceCell::new();
 static APP_CONFIG_DIR: OnceCell<PathBuf> = OnceCell::new();
 static APP_LOG_DIR: OnceCell<PathBuf> = OnceCell::new();
 static DB: OnceCell<db::structs::Settings> = OnceCell::new();
+static COMMANDS: OnceCell<Vec<AssistantCommand>> = OnceCell::new();
 
 fn main() -> Result<(), String> {
     // initialize directories
