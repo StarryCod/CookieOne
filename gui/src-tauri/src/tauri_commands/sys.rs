@@ -1,12 +1,11 @@
+use lazy_static::lazy_static;
 use peak_alloc::PeakAlloc;
+use systemstat::{Platform, System};
+use std::thread;
+use std::time::Duration;
 
 #[global_allocator]
 static PEAK_ALLOC: PeakAlloc = PeakAlloc;
-
-extern crate systemstat;
-use std::thread;
-use std::time::Duration;
-use systemstat::{Platform, System};
 
 lazy_static! {
     static ref SYS: System = System::new();
@@ -14,16 +13,14 @@ lazy_static! {
 
 #[tauri::command]
 pub fn get_current_ram_usage() -> String {
-    let result = String::from(format!("{}", PEAK_ALLOC.current_usage_as_mb()));
-
-    result
+    let bytes = PEAK_ALLOC.current_usage();
+    format!("{:.2}", bytes as f64 / (1024.0 * 1024.0))
 }
 
 #[tauri::command]
 pub fn get_peak_ram_usage() -> String {
-    let result = String::from(format!("{}", PEAK_ALLOC.peak_usage_as_gb()));
-
-    result
+    let bytes = PEAK_ALLOC.peak_usage();
+    format!("{:.2}", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
 }
 
 #[tauri::command]

@@ -1,5 +1,5 @@
 use crate::{config, APP_LOG_DIR};
-use simple_log::{file, LogConfigBuilder};
+use simple_log::LogConfigBuilder;
 
 pub fn init_logging() -> Result<(), String> {
     let log_file_path = format!(
@@ -18,9 +18,8 @@ pub fn init_logging() -> Result<(), String> {
         .output_console()
         .build();
 
-    if file(&log_file_path, log_config).is_err() {
-        return Err("Cannot initialize logging.".into());
-    }
+    simple_log::new(log_config)
+        .map_err(|e| format!("Cannot initialize logging: {}", e))?;
 
     Ok(())
 }

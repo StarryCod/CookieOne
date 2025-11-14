@@ -5,7 +5,7 @@ use std::env;
 use std::path::PathBuf;
 
 use platform_dirs::AppDirs;
-use rustpotter::{RustpotterConfig, WavFmt, DetectorConfig, FiltersConfig, ScoreMode, GainNormalizationConfig, BandPassConfig};
+use rustpotter::{RustpotterConfig, WavFmt, DetectorConfig, FiltersConfig, ScoreMode, GainNormalizationConfig, BandPassConfig, Endianness, SampleFormat};
 
 use crate::{APP_DIRS, APP_CONFIG_DIR, APP_LOG_DIR};
 
@@ -61,8 +61,10 @@ pub const RUSPOTTER_MIN_SCORE: f32 = 0.62;
 pub const RUSTPOTTER_DEFAULT_CONFIG: RustpotterConfig = RustpotterConfig {
     fmt: WavFmt {
         sample_rate: 16000,
-        sample_format: rustpotter::SampleFormat::I16,
+        sample_format: SampleFormat::Int16,
         channels: 1,
+        bits_per_sample: 16,
+        endianness: Endianness::Little,
     },
     detector: DetectorConfig {
         avg_threshold: 0.0,
